@@ -257,7 +257,8 @@
     }
 
     #no-slash-canvas,
-    #no-you-died-video {
+    #no-you-died-video,
+    .death-canvas {
       display: none;
       position: absolute;
       inset: 0;
@@ -268,7 +269,8 @@
     }
 
     #no-slash-canvas.show,
-    #no-you-died-video.show { display: block; }
+    #no-you-died-video.show,
+    .death-canvas.show { display: block; }
 
     #no-answer-next {
       display: none;
@@ -280,7 +282,9 @@
 
     #no-answer-next.show { display: block; }
 
-    #heart-effect {
+    #heart-effect { display: none; }
+
+    .heart-canvas {
       position: absolute;
       inset: 0;
       z-index: 0;
@@ -290,7 +294,10 @@
       opacity: 0.72;
       filter: saturate(1.08) brightness(0.92);
       pointer-events: none;
+      display: none;
     }
+
+    .heart-canvas.show { display: block; }
 
     .twin-card {
       position: relative;
@@ -385,14 +392,19 @@
     }
 
     #plane-overlay video {
-      display: block;
+      display: none;
+    }
+
+    .plane-canvas {
+      display: none;
       width: 100%;
       height: 100%;
-      max-height: none;
       object-fit: contain;
+      pointer-events: none;
+    }
 
-      /* Keeps the transparent WebM transparent */
-      background: transparent;
+    #plane-overlay.active .plane-canvas {
+      display: block;
     }
 
     /* =========================
@@ -998,12 +1010,13 @@
 
   <!-- TRANSPARENT PLANE CRASH -->
   <div id="plane-overlay">
-    <video id="plane-video" playsinline>
+    <video id="plane-video" class="chroma-source" muted playsinline preload="metadata">
       <source
         src="plane_crash_transparent.webm"
         type="video/webm"
       >
     </video>
+    <canvas id="plane-canvas" class="plane-canvas"></canvas>
   </div>
 
   <audio id="background-music" loop>
@@ -1114,9 +1127,10 @@
   </section>
 
   <section id="twin-screen">
-    <video id="heart-effect" autoplay muted loop playsinline>
+    <video id="heart-effect" class="chroma-source" muted playsinline loop preload="metadata">
       <source src="heart-effect-light.webm" type="video/webm">
     </video>
+    <canvas id="heart-canvas" class="heart-canvas"></canvas>
     <div class="twin-card">
       <h1>Me and twin &lt;3</h1>
       <img src="venti2.png" alt="Two characters sharing a kiss">
@@ -1185,12 +1199,13 @@
       </p>
     </div>
 
-    <video id="death-video" playsinline loop>
+    <video id="death-video" class="chroma-source" muted playsinline loop preload="metadata">
       <source
         src="you-died-transparent.webm"
         type="video/webm"
       >
     </video>
+    <canvas id="death-canvas" class="death-canvas"></canvas>
 
     <video id="trip-video" playsinline>
       <source src="oh.mp4" type="video/mp4">
@@ -1315,10 +1330,10 @@
         .classList
         .add("active");
 
+      primeForDelayedSound(document.getElementById("plane-video"));
+
       setTimeout(() => {
-
         playPlaneCrash();
-
       }, 1500);
 
     }
@@ -1347,6 +1362,7 @@
       video.currentTime = 0;
 
       video.play().catch(() => {});
+      primeForDelayedSound(document.getElementById("plane-video"));
 
       setTimeout(() => {
 
@@ -1367,38 +1383,16 @@
 
 
     function playPlaneCrash() {
-
-      const overlay =
-        document.getElementById("plane-overlay");
-
-      const video =
-        document.getElementById("plane-video");
-
-      /*
-        Keep the Turkish screen visible underneath.
-        The WebM overlays on top transparently.
-      */
-
+      const overlay = document.getElementById("plane-overlay");
       overlay.classList.add("active");
 
-      video.currentTime = 0;
-
-      video.play().catch(() => {
-
-        overlay.classList.remove("active");
-
-        showWelcome();
-
+      playChromaEffect("plane-video", "plane-canvas", {
+        sound: true,
+        onended: () => {
+          overlay.classList.remove("active");
+          showWelcome();
+        }
       });
-
-      video.onended = () => {
-
-        overlay.classList.remove("active");
-
-        showWelcome();
-
-      };
-
     }
 
 
@@ -1464,6 +1458,8 @@
       deathVideo.pause();
       deathVideo.currentTime = 0;
       deathVideo.classList.remove("show");
+      document.getElementById("death-canvas").classList.remove("show");
+      stopChromaEffect("death-video", "death-canvas");
       tripVideo.pause();
       tripVideo.currentTime = 0;
       tripVideo.classList.remove("show");
@@ -1490,8 +1486,10 @@
         lines[1].classList.remove("show");
         lines[2].classList.remove("show");
         screen.classList.add("video-active");
-        deathVideo.classList.add("show");
-        deathVideo.play().catch(() => {});
+        playChromaEffect("death-video", "death-canvas", {
+          loop: true,
+          sound: true
+        });
       }, 5000);
       setTimeout(() => lines[3].classList.add("show"), 11000);
       setTimeout(goToNextQuestion, 14000);
@@ -1511,9 +1509,7 @@
       const screen = document.getElementById("death-screen");
       const runningSound = document.getElementById("running-sound");
 
-      document
-        .getElementById("death-video")
-        .pause();
+      stopChromaEffect("death-video", "death-canvas");
 
       document
         .getElementById("trip-video")
@@ -1524,6 +1520,8 @@
 
       screen.classList.remove("active", "video-active");
       document.getElementById("death-video").classList.remove("show");
+      document.getElementById("death-canvas").classList.remove("show");
+      stopChromaEffect("death-video", "death-canvas");
       document.getElementById("trip-video").classList.remove("show");
 
       document
@@ -1927,7 +1925,7 @@
     function goToNextQuestion() {
 
       document.getElementById("background-music").pause();
-      document.getElementById("death-video").pause();
+      stopChromaEffect("death-video", "death-canvas");
       document.getElementById("trip-video").pause();
       document.getElementById("running-sound").pause();
       document.getElementById("boss-spawn").pause();
@@ -1991,11 +1989,18 @@
       setTimeout(() => {
         text.style.display = "none";
         playChromaEffect("no-slash-video", "no-slash-canvas", {
+          sound: true,
           onended: () => {
-          deathVideo.classList.add("show");
-          deathVideo.currentTime = 0;
-          deathVideo.onended = () => next.classList.add("show");
-          deathVideo.play().catch(() => {});
+            deathVideo.classList.add("show");
+            deathVideo.currentTime = 0;
+            deathVideo.muted = true;
+            deathVideo.play().then(() => {
+              deathVideo.muted = false;
+            }).catch(() => {
+              deathVideo.muted = true;
+              deathVideo.play().catch(() => {});
+            });
+            deathVideo.onended = () => next.classList.add("show");
           }
         });
       }, 3000);
@@ -2079,21 +2084,21 @@
       const video = document.getElementById(videoId);
       const canvas = document.getElementById(canvasId);
       const context = canvas.getContext("2d", { willReadFrequently: true });
-      const { loop = false, onended = null } = options;
-      let drawing = false;
+      const { loop = false, onended = null, sound = false } = options;
 
       stopChromaEffect(videoId, canvasId);
       canvas.classList.add("show");
-      video.muted = false;
-      video.volume = 1;
       video.playsInline = true;
       video.loop = loop;
+      video.muted = true;
+      video.volume = 1;
 
       const drawFrame = () => {
         if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-          /* 480px keeps the effect smooth on Android without visible quality loss. */
-          const width = Math.min(video.videoWidth || 480, 480);
-          const height = Math.round(width * (video.videoHeight || 360) / (video.videoWidth || 640));
+          const sourceWidth = video.videoWidth || 480;
+          const sourceHeight = video.videoHeight || 360;
+          const width = Math.min(sourceWidth, 480);
+          const height = Math.max(1, Math.round(width * sourceHeight / sourceWidth));
 
           if (canvas.width !== width || canvas.height !== height) {
             canvas.width = width;
@@ -2109,21 +2114,26 @@
             const red = pixels[i];
             const green = pixels[i + 1];
             const blue = pixels[i + 2];
-            const strongestOther = Math.max(red, blue);
+            const alpha = pixels[i + 3];
 
-            /* Aggressive mobile-friendly chroma key: remove green and its edge spill. */
-            if (green > 28 && green > strongestOther * 1.02) {
+            // Works both for true transparent WebM and for green-screen fallbacks.
+            if (alpha === 0) continue;
+
+            const greenDominance = green - Math.max(red, blue);
+            const greenStrength = green / Math.max(1, red + blue);
+
+            if (green > 45 && greenDominance > 12 && greenStrength > 0.52) {
               pixels[i + 3] = 0;
+            } else if (green > 70 && greenDominance > 5) {
+              // Soften the green spill around the subject instead of leaving a bright edge.
+              pixels[i + 1] = Math.max(red, blue);
             }
           }
 
           context.putImageData(frame, 0, 0);
         }
 
-        chromaAnimationFrames.set(
-          videoId,
-          requestAnimationFrame(drawFrame)
-        );
+        chromaAnimationFrames.set(videoId, requestAnimationFrame(drawFrame));
       };
 
       video.onended = () => {
@@ -2132,27 +2142,36 @@
       };
 
       const beginDrawing = () => {
-        if (drawing) return;
-        drawing = true;
         drawFrame();
       };
 
-      const restartAndPlay = () => {
+      const startPlayback = () => {
         try { video.currentTime = 0; } catch (_) {}
-        video.play().then(beginDrawing).catch(() => {
-          /* Retry once after metadata is available on slower Android devices. */
-          video.addEventListener("canplay", () => video.play().then(beginDrawing).catch(() => {}), { once: true });
+        video.muted = true;
+
+        video.play().then(() => {
+          beginDrawing();
+          // Starting muted satisfies mobile autoplay rules; unmuting after play restores the video's audio.
+          if (sound) {
+            requestAnimationFrame(() => { video.muted = false; });
+          }
+        }).catch(() => {
+          // A muted retry is the safest fallback on mobile Safari/Chrome.
+          video.muted = true;
+          video.play().then(() => {
+            beginDrawing();
+            if (sound) requestAnimationFrame(() => { video.muted = false; });
+          }).catch(() => {});
         });
       };
 
       if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-        restartAndPlay();
+        startPlayback();
       } else {
-        video.addEventListener("loadeddata", restartAndPlay, { once: true });
+        video.addEventListener("loadeddata", startPlayback, { once: true });
         video.load();
       }
     }
-
 
     function stopChromaEffect(videoId, canvasId) {
       const frameId = chromaAnimationFrames.get(videoId);
@@ -2164,7 +2183,9 @@
       video.pause();
       video.loop = false;
       video.onended = null;
+      video.muted = true;
       canvas.classList.remove("show");
+      try { canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height); } catch (_) {}
     }
 
 
@@ -2173,7 +2194,7 @@
       document.getElementById("get-out-sound").pause();
       document.getElementById("get-out-sound").currentTime = 0;
       document.getElementById("careless-music").pause();
-      document.getElementById("heart-effect").pause();
+      stopChromaEffect("heart-effect", "heart-canvas");
       document.getElementById("next-question-screen").classList.remove("active");
       document.getElementById("twin-screen").classList.remove("active");
       document.getElementById("question-three-screen").classList.add("active");
@@ -2223,17 +2244,18 @@
     function playQuestionThreeEffect(effectId) {
       if (effectId === "car-crash-effect") {
         document.getElementById("tralalero-video").volume = 0.3;
-        playChromaEffect("car-crash-effect", "car-crash-canvas");
+        playChromaEffect("car-crash-effect", "car-crash-canvas", { sound: true });
         return;
       }
 
       if (effectId === "missile-explosion-effect") {
-        playChromaEffect("missile-explosion-effect", "missile-explosion-canvas");
+        playChromaEffect("missile-explosion-effect", "missile-explosion-canvas", { sound: true });
         return;
       }
 
       if (effectId === "q3-plane-effect") {
         playChromaEffect("q3-plane-effect", "q3-plane-canvas", {
+          sound: true,
           onended: showBirthdayFinalScene
         });
         return;
@@ -2285,8 +2307,11 @@
       music.pause();
       music.currentTime = 0;
       music.play().catch(() => {});
-      heartEffect.currentTime = 0;
-      heartEffect.play().catch(() => {});
+      stopChromaEffect("heart-effect", "heart-canvas");
+      playChromaEffect("heart-effect", "heart-canvas", {
+        loop: true,
+        sound: false
+      });
 
     }
 
