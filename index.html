@@ -1,0 +1,2297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  >
+
+  <title>Question Game</title>
+
+  <link rel="stylesheet" href="mobile-fixes.css">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: #0a0a0a;
+      color: #fff;
+      font-family: Arial, Helvetica, sans-serif;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      overscroll-behavior: none;
+    }
+
+    /* =========================
+       NORMAL SCREENS
+    ========================= */
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      max-width: 480px;
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding: 16px;
+      gap: 24px;
+      text-align: center;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    h1 {
+      font-size: 2rem;
+    }
+
+    .message {
+      font-size: 1.35rem;
+      line-height: 1.5;
+      font-weight: 500;
+    }
+
+    .question-image {
+      width: min(100%, 360px);
+      max-height: 38vh;
+      object-fit: cover;
+      border: 2px solid rgba(222, 181, 255, 0.6);
+      border-radius: 20px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+    }
+
+    .question-feedback {
+      min-height: 1.5em;
+      color: #ffd5ec;
+      font-weight: bold;
+    }
+
+    #twin-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 700;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 5%, rgba(217, 90, 169, 0.22), transparent 35%),
+        radial-gradient(circle at 50% 100%, #2e123d 0%, #15091f 66%, #09050d 100%);
+      text-align: center;
+    }
+
+    #twin-screen.active { display: flex; }
+
+    /* Canvas is used so the green background of the explosion is transparent. */
+    #explosion-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 800;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    #explosion-overlay.active { display: flex; }
+
+    /* MP4 sources stay invisible; canvases remove their green backgrounds. */
+    .chroma-source {
+      display: block;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #explosion-canvas {
+      display: none;
+      width: min(92vw, 1180px);
+      height: auto;
+      max-height: 82vh;
+    }
+
+    #explosion-canvas.show { display: block; }
+
+    #tralalero-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 900;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #tralalero-screen.active { display: block; }
+
+    #tralalero-video {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .brainrot-crash-effect {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+    }
+
+    .brainrot-crash-effect.show { display: block; }
+
+    #birthday-final-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 18px;
+      overflow-y: auto;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(255, 103, 181, 0.3), transparent 42%),
+        linear-gradient(160deg, #281031, #100713 72%);
+      text-align: center;
+    }
+
+    #birthday-final-screen.active { display: flex; }
+
+    .birthday-final-card {
+      width: min(100%, 620px);
+      display: grid;
+      justify-items: center;
+      gap: 18px;
+      padding: 18px 0;
+    }
+
+    .birthday-message {
+      color: #ffe4f3;
+      font-size: clamp(1.25rem, 5vw, 2rem);
+      font-weight: 700;
+      line-height: 1.45;
+      text-shadow: 0 0 22px rgba(255, 129, 198, 0.42);
+    }
+
+    #birthday-video-note,
+    #birthday-performance-video,
+    #birthday-heart { display: none; }
+
+    #birthday-video-note.show,
+    #birthday-performance-video.show,
+    #birthday-heart.show { display: block; animation: reveal 0.55s ease both; }
+
+    #birthday-video-note {
+      color: #ffd0e8;
+      font-size: clamp(1.1rem, 4.5vw, 1.5rem);
+      font-weight: bold;
+    }
+
+    #birthday-performance-video {
+      width: min(92vw, 560px);
+      max-height: 55dvh;
+      border: 2px solid rgba(255, 202, 232, 0.78);
+      border-radius: 18px;
+      background: #000;
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.46);
+    }
+
+    #birthday-heart {
+      color: #ff78bb;
+      font-size: clamp(2.4rem, 11vw, 4.5rem);
+      line-height: 1;
+      text-shadow: 0 0 20px rgba(255, 75, 168, 0.8);
+    }
+
+    #no-answer-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 950;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: #000;
+      text-align: center;
+    }
+
+    #no-answer-screen.active { display: flex; }
+
+    #no-answer-text {
+      position: relative;
+      z-index: 2;
+      width: min(90%, 760px);
+      color: #fff;
+      font-size: clamp(1.6rem, 7vw, 3.5rem);
+      font-weight: bold;
+      line-height: 1.25;
+    }
+
+    #no-slash-canvas,
+    #no-you-died-video {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    #no-slash-canvas.show,
+    #no-you-died-video.show { display: block; }
+
+    #no-answer-next {
+      display: none;
+      position: fixed;
+      z-index: 3;
+      bottom: 8vh;
+      width: min(260px, 76vw);
+    }
+
+    #no-answer-next.show { display: block; }
+
+    #heart-effect {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0.72;
+      filter: saturate(1.08) brightness(0.92);
+      pointer-events: none;
+    }
+
+    .twin-card {
+      position: relative;
+      width: min(100%, 460px);
+      z-index: 1;
+      padding: 0;
+    }
+
+    .twin-card h1 { margin-bottom: 18px; color: #ffd0e5; font-size: clamp(1.5rem, 6vw, 2.35rem); text-shadow: 0 0 18px rgba(255, 120, 192, 0.5); }
+    .twin-card img { display: block; width: 100%; max-height: 68vh; object-fit: contain; border-radius: 22px; box-shadow: 0 20px 44px rgba(0, 0, 0, 0.42); }
+
+    .btn-group,
+    .choice-list {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      gap: 16px;
+    }
+
+    button {
+      min-height: 52px;
+      touch-action: manipulation;
+      width: 100%;
+      padding: 18px 24px;
+      border: 2px solid #333;
+      border-radius: 14px;
+      background: #1a1a1a;
+      color: white;
+      font-size: 1.15rem;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    button:hover,
+    button:active {
+      background: #252525;
+      border-color: #666;
+      transform: scale(1.02);
+    }
+
+    /* =========================
+       TURKISH VIDEO
+    ========================= */
+
+    .video-container {
+      display: none;
+      width: 100%;
+      overflow: hidden;
+      border-radius: 12px;
+      background: #111;
+    }
+
+    .video-container.active {
+      display: block;
+    }
+
+    .video-container video {
+      display: block;
+      width: 100%;
+      max-height: 70vh;
+      border-radius: 12px;
+    }
+
+    #this-is-u {
+      display: none;
+      color: #ff6b6b;
+      font-size: 1.25rem;
+      font-weight: bold;
+    }
+
+    /* =========================
+       PLANE CRASH
+       IMPORTANT:
+       NO BLACK BACKGROUND
+    ========================= */
+
+    #plane-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+
+      /* Transparent so the previous screen stays visible */
+      background: transparent;
+    }
+
+    #plane-overlay.active {
+      display: flex;
+    }
+
+    #plane-overlay video {
+      display: block;
+      width: 100%;
+      height: 100%;
+      max-height: none;
+      object-fit: contain;
+
+      /* Keeps the transparent WebM transparent */
+      background: transparent;
+    }
+
+    /* =========================
+       MAIN QUESTION
+    ========================= */
+
+    #main-site {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      align-items: center;
+      justify-content: center;
+      padding: 22px 16px;
+      overflow-y: auto;
+      background:
+        radial-gradient(
+          circle at 50% 12%,
+          #634c8a 0%,
+          #2a1d40 36%,
+          #0b0b14 78%
+        );
+    }
+
+    #main-site.active {
+      display: flex;
+    }
+
+    .question-stage {
+      width: min(100%, 600px);
+      display: grid;
+      gap: 14px;
+    }
+
+    .mommy-visual {
+      position: relative;
+      height: min(34vh, 300px);
+      overflow: hidden;
+      border: 1px solid rgba(240, 207, 255, 0.65);
+      border-radius: 26px;
+      background: #17121d;
+      box-shadow:
+        0 14px 35px rgba(0, 0, 0, 0.42),
+        0 0 40px rgba(181, 106, 255, 0.22);
+    }
+
+    .mommy-visual img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+    }
+
+    .question-card {
+      padding: 26px 20px;
+      border: 1px solid rgba(222, 181, 255, 0.55);
+      border-radius: 26px;
+      background: rgba(18, 14, 30, 0.92);
+      text-align: center;
+    }
+
+    .question-card h1 {
+      margin-bottom: 12px;
+      color: #ffd5ec;
+      font-size: 0.82rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .question-question {
+      margin-bottom: 24px;
+      font-size: clamp(1.38rem, 5vw, 1.85rem);
+      font-weight: bold;
+      line-height: 1.35;
+    }
+
+    .choice-list {
+      gap: 11px;
+    }
+
+    .choice-list button {
+      border-color: rgba(194, 145, 220, 0.55);
+      background:
+        linear-gradient(
+          100deg,
+          rgba(81, 51, 104, 0.96),
+          rgba(47, 30, 62, 0.96)
+        );
+      text-align: left;
+    }
+
+    .choice-list button:hover,
+    .choice-list button.selected {
+      border-color: #ffd0ec;
+      background:
+        linear-gradient(
+          100deg,
+          #8b4e90,
+          #4d326e
+        );
+    }
+
+    /* =========================
+       RUN AWAY
+    ========================= */
+
+    #death-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 22px;
+      padding: 28px;
+      overflow: hidden;
+      background: #000;
+      text-align: center;
+    }
+
+    #death-screen.active {
+      display: flex;
+    }
+
+    #death-screen.video-active {
+      background: #160000;
+    }
+
+    #death-screen::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0;
+      background: radial-gradient(circle, rgba(185, 0, 0, 0.34), transparent 62%);
+      mix-blend-mode: screen;
+    }
+
+    #death-screen.video-active::before {
+      opacity: 1;
+      animation: deathPulse 2.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes deathPulse {
+      to {
+        opacity: 0.3;
+        transform: scale(1.25);
+      }
+    }
+
+    .death-story {
+      position: relative;
+      z-index: 2;
+      width: min(100%, 660px);
+      display: grid;
+      gap: 16px;
+    }
+
+    .death-line {
+      display: none;
+      color: white;
+      font-size: clamp(1.3rem, 5vw, 2rem);
+      font-weight: bold;
+      line-height: 1.42;
+    }
+
+    .death-line.show {
+      display: block;
+      animation: reveal 0.65s ease both;
+    }
+
+    .death-line:last-child {
+      position: fixed;
+      bottom: 10vh;
+      left: 5%;
+      width: 90%;
+      padding: 22px 28px;
+      border-radius: 50%;
+      background: radial-gradient(ellipse, rgba(180, 16, 16, 0.72) 0%, rgba(105, 0, 0, 0.38) 48%, transparent 74%);
+      color: #ff8585;
+    }
+
+    @keyframes reveal {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    #death-video,
+    #trip-video {
+      display: none;
+      position: absolute;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+    }
+
+    #death-video {
+      z-index: 0;
+    }
+
+    #trip-video {
+      z-index: 1;
+    }
+
+    #death-video.show,
+    #trip-video.show {
+      display: block;
+    }
+
+    .respawn-hitbox,
+    .respawn-hitbox:hover,
+    .respawn-hitbox:active,
+    .respawn-hitbox:focus {
+      position: fixed;
+      z-index: 3;
+      top: 52%;
+      left: 20%;
+      width: 60%;
+      height: 9%;
+      padding: 0;
+      border: 0 !important;
+      outline: 0;
+      background: transparent !important;
+      color: transparent;
+      box-shadow: none;
+      transform: none !important;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    /* =========================
+       RUN TOWARDS THEM
+    ========================= */
+
+    #panic-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 450;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 24px;
+      overflow: hidden;
+      background:
+        radial-gradient(
+          circle at center,
+          #3a101b 0%,
+          #15080e 54%,
+          #050505 100%
+        );
+      text-align: center;
+    }
+
+    #panic-screen.active {
+      display: flex;
+    }
+
+    .panic-card {
+      width: min(100%, 640px);
+    }
+
+    .panic-visual {
+      height: min(37vh, 350px);
+      margin: 12px 0;
+      overflow: hidden;
+      border: 2px solid #ff7474;
+      border-radius: 18px;
+      background: #20101a;
+    }
+
+    .panic-visual img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+    }
+
+    .panic-visual.fleeing img {
+      animation: flee 0.9s ease forwards;
+    }
+
+    @keyframes flee {
+      to {
+        transform: translateX(125%) rotate(8deg);
+      }
+    }
+
+    .panic-status {
+      min-height: 1.5em;
+      color: #ffd4d4;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    .meme-slot {
+      display: none;
+      width: min(100%, 300px);
+      margin: 14px auto 0;
+      overflow: hidden;
+      border: 2px solid #ff8c8c;
+      border-radius: 14px;
+    }
+
+    .meme-slot.show {
+      display: block;
+    }
+
+    .meme-slot img {
+      display: block;
+      width: 100%;
+    }
+
+    .replay-btn {
+      display: none;
+      max-width: 260px;
+      margin: 14px auto 0;
+    }
+
+    .replay-btn.show {
+      display: block;
+    }
+
+    .boss-awoken {
+      display: none;
+      position: fixed;
+      z-index: 4;
+      bottom: 30px;
+      left: 28px;
+      color: #59ffff;
+      font-family: monospace;
+      font-size: clamp(1.15rem, 4vw, 1.8rem);
+      font-weight: bold;
+    }
+
+    .boss-awoken.show {
+      display: block;
+    }
+
+    #monster-eye {
+      display: none;
+      position: fixed;
+      z-index: 4;
+      bottom: 74px;
+      left: 28px;
+      width: clamp(96px, 16vw, 150px);
+      pointer-events: none;
+      transform: scaleX(-1);
+    }
+
+    #monster-eye.show { display: block; }
+
+    #monster-eye.spin {
+      animation: monsterSpin 1s linear forwards;
+    }
+
+    #monster-eye.charge {
+      animation: monsterCharge 0.9s cubic-bezier(0.1, 0.75, 0.2, 1) forwards;
+    }
+
+    @keyframes monsterSpin {
+      from { transform: scaleX(-1) rotate(0deg); }
+      to { transform: scaleX(-1) rotate(360deg); }
+    }
+
+    @keyframes monsterCharge {
+      from {
+        left: 28px;
+        bottom: 74px;
+        transform: scaleX(-1) rotate(360deg) scale(1);
+      }
+      to {
+        left: min(66vw, 750px);
+        bottom: 33vh;
+        transform: scaleX(-1) rotate(360deg) scale(1.45);
+      }
+    }
+
+    /* =========================
+       STAND STILL
+    ========================= */
+
+    #stand-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 600;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: #08070d;
+    }
+
+    #stand-screen.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stand-bg {
+      position: absolute;
+      inset: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .stand-bg img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+      filter: brightness(0.5);
+      transition:
+        transform 2s ease,
+        filter 2s ease;
+    }
+
+    #stand-screen.closer .stand-bg img {
+      transform: scale(1.35);
+      filter: brightness(0.4);
+    }
+
+    #stand-screen.very-close .stand-bg img {
+      transform: scale(1.75);
+      filter: brightness(0.25);
+    }
+
+    .stand-overlay {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(
+          circle,
+          rgba(30, 10, 35, 0.1),
+          rgba(0, 0, 0, 0.8)
+        );
+      transition: opacity 0.2s ease;
+    }
+
+    .stand-content {
+      position: relative;
+      z-index: 2;
+      width: min(94%, 850px);
+      padding: 20px;
+      text-align: center;
+      display: grid;
+      justify-items: center;
+    }
+
+    #stand-text {
+      color: white;
+      font-size: clamp(1.25rem, 4.8vw, 2.5rem);
+      font-weight: bold;
+      line-height: 1.2;
+      min-height: 3em;
+      text-shadow: 0 0 20px rgba(255, 255, 255, 0.35);
+    }
+
+    #stand-text.show {
+      animation: reveal 0.5s ease both;
+    }
+
+    #stand-screen.blackout {
+      background: #000;
+    }
+
+    #stand-screen.blackout .stand-bg,
+    #stand-screen.blackout .stand-overlay {
+      opacity: 0;
+    }
+
+    #cat-video {
+      display: none;
+      width: min(92vw, 800px);
+      max-height: 68vh;
+      margin: 0 auto;
+      object-fit: contain;
+      border-radius: 14px;
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.12);
+    }
+
+    #cat-video.show {
+      display: block;
+      animation: reveal 0.5s ease both;
+    }
+
+    #ricardo-video {
+      display: none;
+      position: relative;
+      left: clamp(-42px, -3vw, -12px);
+      width: min(96vw, 1000px);
+      max-height: 64vh;
+      margin: 0 auto;
+      object-fit: contain;
+      border-radius: 14px;
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.12);
+    }
+
+    #ricardo-video.show {
+      display: block;
+      animation: reveal 0.5s ease both;
+    }
+
+    #stand-next {
+      position: relative;
+      left: clamp(-42px, -3vw, -12px);
+    }
+
+    .ricardo-message {
+      display: none;
+      margin-top: 18px;
+      color: #ffe3f1;
+      font-size: clamp(1.05rem, 4.2vw, 1.8rem);
+      font-weight: bold;
+      line-height: 1.3;
+    }
+
+    .ricardo-message.show { display: block; animation: reveal 0.5s ease both; }
+
+    #final-stand-text {
+      display: none;
+      margin-top: 22px;
+      color: white;
+      font-size: clamp(1.15rem, 4.5vw, 2.25rem);
+      font-weight: bold;
+      line-height: 1.25;
+    }
+
+    #final-stand-text.show {
+      display: block;
+      animation: reveal 0.5s ease both;
+    }
+
+    #stand-replay {
+      display: none;
+      position: fixed;
+      z-index: 5;
+      bottom: 5vh;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(260px, 80%);
+    }
+
+    #stand-replay.show {
+      display: block;
+    }
+    /* Compact Android layout: prevent clipped content and tiny touch targets. */
+    @media (max-width: 600px), (max-height: 700px) {
+      .screen { gap: 15px; padding: 14px; }
+      .message { font-size: 1.12rem; }
+      .question-image { max-height: 28dvh; }
+      .question-stage { gap: 10px; }
+      .mommy-visual { height: min(28dvh, 245px); }
+      .question-card { padding: 18px 14px; }
+      .question-question { margin-bottom: 16px; font-size: clamp(1.15rem, 5vw, 1.5rem); }
+      button { padding: 13px 16px; font-size: 1rem; }
+      #tralalero-video { object-fit: contain; }
+      #birthday-performance-video { max-height: 48dvh; }
+      .birthday-final-card { gap: 13px; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="language-screen" class="screen active">
+    <h1>Language</h1>
+
+    <div class="btn-group">
+      <button onclick="chooseEnglish()">English</button>
+      <button onclick="chooseTurkish()">Türkçe yanar babaa</button>
+    </div>
+  </div>
+
+  <div id="english-screen" class="screen">
+    <p class="message">
+      Good choice... VERY good choice.
+    </p>
+  </div>
+
+  <div id="turkish-screen" class="screen">
+    <p class="message">
+      Turkish, what? You don't know english?
+    </p>
+
+    <div class="video-container" id="video-box">
+      <video id="clown-video" playsinline>
+        <source src="clown.mp4" type="video/mp4">
+      </video>
+    </div>
+
+    <p id="this-is-u">This is u btw.</p>
+  </div>
+
+  <!-- TRANSPARENT PLANE CRASH -->
+  <div id="plane-overlay">
+    <video id="plane-video" playsinline>
+      <source
+        src="plane_crash_transparent.webm"
+        type="video/webm"
+      >
+    </video>
+  </div>
+
+  <audio id="background-music" loop>
+    <source src="overworld-day.mp3" type="audio/mpeg">
+  </audio>
+
+  <audio id="running-sound">
+    <source src="foxy-running.mp3" type="audio/mpeg">
+  </audio>
+
+  <audio id="boss-spawn">
+    <source src="boss-spawn.mp3" type="audio/mpeg">
+  </audio>
+
+  <audio id="boss-music" loop>
+    <source src="boss-1.mp3" type="audio/mpeg">
+  </audio>
+
+  <audio id="careless-music">
+    <source src="careless.mp3" type="audio/mpeg">
+  </audio>
+
+  <audio id="alert-meme">
+    <source src="alert-meme.mp3" type="audio/mpeg">
+  </audio>
+
+  <audio id="eye-charge-sound">
+    <source src="eye-charge.mp3" type="audio/mpeg">
+  </audio>
+
+  <audio id="get-out-sound" preload="auto">
+    <source src="get-out.mp3" type="audio/mpeg">
+  </audio>
+
+  <div id="explosion-overlay" aria-hidden="true">
+    <video id="explosion-video" class="chroma-source" muted playsinline preload="metadata">
+      <source src="fire-explosion-green.mp4" type="video/mp4">
+    </video>
+    <canvas id="explosion-canvas"></canvas>
+  </div>
+
+  <div id="welcome-screen" class="screen">
+    <h1>For you</h1>
+
+    <p class="message">
+      Hocam hoşgeldin. Öncelikle doğum gününü kutlarım.
+      Bu siteyi de sana özel yaptım. Sana birkaç soru
+      hazırladım. Have fun twin.
+    </p>
+
+    <button onclick="startQuestions()">Start</button>
+  </div>
+
+  <main id="main-site">
+    <div class="question-stage">
+
+      <figure class="mommy-visual">
+        <img src="mommy.jpg" alt="Mommies">
+      </figure>
+
+      <section class="question-card">
+        <h1>Question One</h1>
+
+        <p class="question-question">
+          You encounter mommies and they are all walking
+          towards you. What do you do?
+        </p>
+
+        <div class="choice-list">
+          <button onclick="runAway(this)">
+            Run away.
+          </button>
+
+          <button onclick="standStill(this)">
+            Stand still and embrace for the impact
+          </button>
+
+          <button onclick="runTowards(this)">
+            RUN TOWARDS THEM
+          </button>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <section id="next-question-screen" class="screen">
+    <h1>Question Two</h1>
+    <img class="question-image" src="venti1.png" alt="Two characters holding Monster energy drinks">
+    <p class="message">Is this us twin?</p>
+    <div class="btn-group">
+      <button onclick="answerQuestionTwo(this, 'Yes ofc twin!')">Yes ofc twin!</button>
+      <button onclick="answerQuestionTwo(this, 'No... I\'m straight.')">No... I'm straight.</button>
+    </div>
+    <p class="question-feedback" id="question-two-feedback" aria-live="polite"></p>
+  </section>
+
+  <section id="no-answer-screen">
+    <p id="no-answer-text">Ne diyon lan ne no su sikerim ha</p>
+    <video id="no-slash-video" class="chroma-source" muted playsinline preload="metadata">
+      <source src="undertale-slash-green.mp4" type="video/mp4">
+    </video>
+    <canvas id="no-slash-canvas"></canvas>
+    <video id="no-you-died-video" playsinline>
+      <source src="no-you-died.mp4" type="video/mp4">
+    </video>
+    <button id="no-answer-next" onclick="returnToQuestionTwo()">Next</button>
+  </section>
+
+  <section id="twin-screen">
+    <video id="heart-effect" autoplay muted loop playsinline>
+      <source src="heart-effect-light.webm" type="video/webm">
+    </video>
+    <div class="twin-card">
+      <h1>Me and twin &lt;3</h1>
+      <img src="venti2.png" alt="Two characters sharing a kiss">
+    </div>
+  </section>
+
+  <section id="question-three-screen" class="screen">
+    <h1>Question Three</h1>
+    <img class="question-image" src="tralalero-question.jpg" alt="Italian brainrot meme close-up">
+    <p class="message">Hocam bu resim hangi Italian brainrot meme'ine aittir?</p>
+    <div class="btn-group">
+      <button onclick="answerQuestionThree(this, 'Ballerina Cappucino')">Ballerina Cappucino</button>
+      <button onclick="answerQuestionThree(this, 'Brr Brr Patapim')">Brr Brr Patapim</button>
+      <button onclick="answerQuestionThree(this, 'Tralalero Tralala')">Tralalero Tralala</button>
+      <button onclick="answerQuestionThree(this, 'Tung Tung Tung Sahur')">Tung Tung Tung Sahur</button>
+    </div>
+    <p class="question-feedback" id="question-three-feedback" aria-live="polite"></p>
+  </section>
+
+  <section id="tralalero-screen">
+    <video id="tralalero-video" playsinline>
+      <source src="tralalero.mp4" type="video/mp4">
+    </video>
+    <video id="car-crash-effect" class="chroma-source" muted playsinline preload="metadata">
+      <source src="car-crash-green.mp4" type="video/mp4">
+    </video>
+    <canvas id="car-crash-canvas" class="brainrot-crash-effect"></canvas>
+    <video id="missile-explosion-effect" class="chroma-source" muted playsinline preload="metadata">
+      <source src="missile-explosion-green.mp4" type="video/mp4">
+    </video>
+    <canvas id="missile-explosion-canvas" class="brainrot-crash-effect"></canvas>
+    <video id="q3-plane-effect" class="chroma-source" muted playsinline preload="metadata">
+      <source src="plane_crash_transparent.webm" type="video/webm">
+    </video>
+    <canvas id="q3-plane-canvas" class="brainrot-crash-effect"></canvas>
+  </section>
+
+  <section id="birthday-final-screen">
+    <div class="birthday-final-card">
+      <p class="birthday-message">Hocam sa doğum günün tekrardan kutlu olsun. Baya kısa oldu ama bu siteyi yapmak düşündüğümden daha fazla zaman aldı la. Herneyse hocam seviliyorsun daha fazla boş zamanım olsa daha iyi yapıp daha fazla şey eklerdim. Tekrardan doğum günün kutlu olsun my pookie bear &lt;3</p>
+      <p id="birthday-video-note">Hocam bunu da ben çalıyorum btw</p>
+      <video id="birthday-performance-video" playsinline controls>
+        <source src="birthday-performance.mp4" type="video/mp4">
+      </video>
+      <div id="birthday-heart" aria-label="heart">♥</div>
+    </div>
+  </section>
+
+  <section id="death-screen">
+
+    <div class="death-story">
+      <p class="death-line">
+        You started to run away from them.
+      </p>
+
+      <p class="death-line">
+        But in a quick moment,
+      </p>
+
+      <p class="death-line">
+        you trip and fell.
+      </p>
+
+      <p class="death-line">
+        What a way to go in front of the baddies.
+      </p>
+    </div>
+
+    <video id="death-video" playsinline loop>
+      <source
+        src="you-died-transparent.webm"
+        type="video/webm"
+      >
+    </video>
+
+    <video id="trip-video" playsinline>
+      <source src="oh.mp4" type="video/mp4">
+    </video>
+
+    <button
+      class="respawn-hitbox"
+      onclick="respawn()"
+    ></button>
+
+  </section>
+
+  <section id="panic-screen">
+
+    <div class="panic-card">
+
+      <div class="panic-visual" id="panic-visual">
+        <img src="mommy.jpg" alt="Mommies">
+      </div>
+
+      <p
+        class="panic-status"
+        id="panic-status"
+      ></p>
+
+      <div
+        class="meme-slot"
+        id="meme-slot"
+      >
+        <img
+          src="no-bitches.jfif"
+          alt="No bitches"
+        >
+      </div>
+
+      <button
+        class="replay-btn"
+        id="panic-replay"
+        onclick="returnToQuestion()"
+      >
+        Next
+      </button>
+
+    </div>
+
+    <img id="monster-eye" src="monster-eye.gif" alt="">
+
+    <p
+      class="boss-awoken"
+      id="boss-awoken"
+    >
+      A monster has awoken!
+    </p>
+
+  </section>
+
+  <section id="stand-screen">
+
+    <div class="stand-bg">
+      <img src="mommy.jpg" alt="">
+    </div>
+
+    <div class="stand-overlay"></div>
+
+    <div class="stand-content">
+
+      <p id="stand-text"></p>
+
+      <video id="cat-video" playsinline>
+        <source
+          src="Cat Laughing At You.mp4"
+          type="video/mp4"
+        >
+      </video>
+
+      <video id="ricardo-video" playsinline loop>
+        <source src="ricardo-milos.mp4" type="video/mp4">
+      </video>
+
+      <button id="stand-next" class="replay-btn" onclick="goToNextQuestion()">
+        Next
+      </button>
+
+      <p id="ricardo-message" class="ricardo-message">
+        Hocam ricardo milos mommy leri çaldı geçmiş ola :(
+      </p>
+
+      <p id="ricardo-fries" class="ricardo-message">
+        Just put the fries in the bag lil bro
+      </p>
+
+      <p id="final-stand-text">
+        You're not him bro just put the fries in the bag.
+      </p>
+
+    </div>
+
+    <button
+      id="stand-replay"
+      onclick="returnFromStand()"
+    >
+      Try again
+    </button>
+
+  </section>
+
+
+  <script>
+
+    let questionTwoSequenceRunning = false;
+    let questionThreeSequenceRunning = false;
+
+    function chooseEnglish() {
+
+      document
+        .getElementById("language-screen")
+        .classList
+        .remove("active");
+
+      document
+        .getElementById("english-screen")
+        .classList
+        .add("active");
+
+      setTimeout(() => {
+
+        playPlaneCrash();
+
+      }, 1500);
+
+    }
+
+
+    function chooseTurkish() {
+
+      document
+        .getElementById("language-screen")
+        .classList
+        .remove("active");
+
+      document
+        .getElementById("turkish-screen")
+        .classList
+        .add("active");
+
+      const video =
+        document.getElementById("clown-video");
+
+      document
+        .getElementById("video-box")
+        .classList
+        .add("active");
+
+      video.currentTime = 0;
+
+      video.play().catch(() => {});
+
+      setTimeout(() => {
+
+        document
+          .getElementById("this-is-u")
+          .style
+          .display = "block";
+
+      }, 4000);
+
+      setTimeout(() => {
+
+        playPlaneCrash();
+
+      }, 5000);
+
+    }
+
+
+    function playPlaneCrash() {
+
+      const overlay =
+        document.getElementById("plane-overlay");
+
+      const video =
+        document.getElementById("plane-video");
+
+      /*
+        Keep the Turkish screen visible underneath.
+        The WebM overlays on top transparently.
+      */
+
+      overlay.classList.add("active");
+
+      video.currentTime = 0;
+
+      video.play().catch(() => {
+
+        overlay.classList.remove("active");
+
+        showWelcome();
+
+      });
+
+      video.onended = () => {
+
+        overlay.classList.remove("active");
+
+        showWelcome();
+
+      };
+
+    }
+
+
+    function showWelcome() {
+
+      document
+        .getElementById("english-screen")
+        .classList
+        .remove("active");
+
+      document
+        .getElementById("turkish-screen")
+        .classList
+        .remove("active");
+
+      document
+        .getElementById("plane-overlay")
+        .classList
+        .remove("active");
+
+      document
+        .getElementById("welcome-screen")
+        .classList
+        .add("active");
+
+      document
+        .getElementById("background-music")
+        .play()
+        .catch(() => {});
+
+    }
+
+
+    function startQuestions() {
+
+      document
+        .getElementById("welcome-screen")
+        .classList
+        .remove("active");
+
+      document
+        .getElementById("main-site")
+        .classList
+        .add("active");
+
+    }
+
+
+    function runAway(button) {
+      button.classList.add("selected");
+      const backgroundMusic = document.getElementById("background-music");
+      const screen = document.getElementById("death-screen");
+      const lines = screen.querySelectorAll(".death-line");
+      const deathVideo = document.getElementById("death-video");
+      const tripVideo = document.getElementById("trip-video");
+      const runningSound = document.getElementById("running-sound");
+
+      backgroundMusic.pause();
+      backgroundMusic.currentTime = 0;
+      document.getElementById("main-site").classList.remove("active");
+      lines.forEach(line => line.classList.remove("show"));
+      screen.classList.remove("video-active");
+      deathVideo.pause();
+      deathVideo.currentTime = 0;
+      deathVideo.classList.remove("show");
+      tripVideo.pause();
+      tripVideo.currentTime = 0;
+      tripVideo.classList.remove("show");
+      runningSound.pause();
+      runningSound.currentTime = 0;
+      screen.classList.add("active");
+
+      primeForDelayedSound(deathVideo);
+      primeForDelayedSound(tripVideo);
+      primeForDelayedSound(runningSound);
+
+      setTimeout(() => {
+        lines[0].classList.add("show");
+        runningSound.play().catch(() => {});
+      }, 2000);
+      setTimeout(() => lines[1].classList.add("show"), 3000);
+      setTimeout(() => {
+        lines[2].classList.add("show");
+        tripVideo.classList.add("show");
+        tripVideo.play().catch(() => {});
+      }, 3600);
+      setTimeout(() => {
+        lines[0].classList.remove("show");
+        lines[1].classList.remove("show");
+        lines[2].classList.remove("show");
+        screen.classList.add("video-active");
+        deathVideo.classList.add("show");
+        deathVideo.play().catch(() => {});
+      }, 5000);
+      setTimeout(() => lines[3].classList.add("show"), 11000);
+      setTimeout(goToNextQuestion, 14000);
+    }
+
+    function primeForDelayedSound(media) {
+      media.muted = true;
+      media.play().then(() => {
+        media.pause();
+        media.currentTime = 0;
+        media.muted = false;
+      }).catch(() => {});
+    }
+
+
+    function respawn() {
+      const screen = document.getElementById("death-screen");
+      const runningSound = document.getElementById("running-sound");
+
+      document
+        .getElementById("death-video")
+        .pause();
+
+      document
+        .getElementById("trip-video")
+        .pause();
+
+      runningSound.pause();
+      runningSound.currentTime = 0;
+
+      screen.classList.remove("active", "video-active");
+      document.getElementById("death-video").classList.remove("show");
+      document.getElementById("trip-video").classList.remove("show");
+
+      document
+        .getElementById("main-site")
+        .classList
+        .add("active");
+
+      document
+        .querySelectorAll(".choice-list button")
+        .forEach(button => {
+          button.classList.remove("selected");
+        });
+
+      document
+        .getElementById("background-music")
+        .play()
+        .catch(() => {});
+
+      goToNextQuestion();
+
+    }
+
+
+    function runTowards(button) {
+
+      button.classList.add("selected");
+
+      document
+        .getElementById("background-music")
+        .pause();
+
+      document
+        .getElementById("main-site")
+        .classList
+        .remove("active");
+
+      const screen =
+        document.getElementById("panic-screen");
+
+      const status =
+        document.getElementById("panic-status");
+
+      const visual =
+        document.getElementById("panic-visual");
+
+      const meme =
+        document.getElementById("meme-slot");
+
+      const replay =
+        document.getElementById("panic-replay");
+
+      const boss =
+        document.getElementById("boss-awoken");
+
+      const bossMusic =
+        document.getElementById("boss-music");
+
+      const bossSpawn =
+        document.getElementById("boss-spawn");
+
+      const monsterEye = document.getElementById("monster-eye");
+      const eyeChargeSound = document.getElementById("eye-charge-sound");
+
+      status.textContent = "";
+
+      visual.classList.remove("fleeing");
+
+      meme.classList.remove("show");
+
+      replay.classList.remove("show");
+
+      boss.classList.remove("show");
+      monsterEye.classList.remove("show", "spin", "charge");
+      eyeChargeSound.pause();
+      eyeChargeSound.currentTime = 0;
+
+      bossMusic.pause();
+      bossMusic.currentTime = 0;
+
+      screen.classList.add("active");
+
+      boss.classList.add("show");
+
+      monsterEye.classList.add("show", "spin");
+
+      bossSpawn.currentTime = 0;
+
+      bossSpawn.play().catch(() => {});
+
+      setTimeout(() => {
+
+        bossMusic.play().catch(() => {});
+
+      }, 900);
+
+      setTimeout(() => {
+
+        monsterEye.classList.remove("spin");
+        monsterEye.classList.add("charge");
+        eyeChargeSound.currentTime = 0;
+        eyeChargeSound.play().catch(() => {});
+
+      }, 2500);
+
+      setTimeout(() => {
+
+        status.textContent =
+          "You started to run towards them.";
+
+      }, 1300);
+
+      setTimeout(() => {
+
+        visual.classList.add("fleeing");
+
+      }, 3400);
+
+      setTimeout(() => {
+
+        monsterEye.classList.remove("show", "charge");
+
+      }, 3500);
+
+      setTimeout(() => {
+
+        status.textContent =
+          "You scared them and they ran away.";
+
+      }, 3600);
+
+      setTimeout(() => {
+
+        meme.classList.add("show");
+
+        replay.classList.add("show");
+
+      }, 6000);
+
+      setTimeout(goToNextQuestion, 9000);
+
+    }
+
+
+    function returnToQuestion() {
+
+      document
+        .getElementById("panic-screen")
+        .classList
+        .remove("active");
+
+      document
+        .getElementById("boss-music")
+        .pause();
+
+      document
+        .getElementById("main-site")
+        .classList
+        .add("active");
+
+      document
+        .querySelectorAll(".choice-list button")
+        .forEach(button => {
+          button.classList.remove("selected");
+        });
+
+      document
+        .getElementById("background-music")
+        .play()
+        .catch(() => {});
+
+      goToNextQuestion();
+
+    }
+
+
+    function standStill(button) {
+
+      button.classList.add("selected");
+
+      document
+        .getElementById("background-music")
+        .pause();
+
+      document
+        .getElementById("main-site")
+        .classList
+        .remove("active");
+
+      const screen =
+        document.getElementById("stand-screen");
+
+      const text =
+        document.getElementById("stand-text");
+
+      const catVideo =
+        document.getElementById("cat-video");
+
+      const finalText =
+        document.getElementById("final-stand-text");
+
+      const replay =
+        document.getElementById("stand-replay");
+
+      const ricardoVideo = document.getElementById("ricardo-video");
+      const ricardoMessage = document.getElementById("ricardo-message");
+      const ricardoFries = document.getElementById("ricardo-fries");
+      const next = document.getElementById("stand-next");
+      const alertMeme = document.getElementById("alert-meme");
+
+      screen.classList.remove(
+        "closer",
+        "very-close",
+        "blackout"
+      );
+
+      text.textContent = "";
+
+      text.classList.remove("show");
+
+      catVideo.pause();
+      catVideo.currentTime = 0;
+      catVideo.classList.remove("show");
+
+      ricardoVideo.pause();
+      ricardoVideo.currentTime = 0;
+      ricardoVideo.classList.remove("show");
+      alertMeme.pause();
+      alertMeme.currentTime = 0;
+      ricardoMessage.classList.remove("show");
+      ricardoFries.classList.remove("show");
+      next.classList.remove("show");
+
+      finalText.classList.remove("show");
+
+      replay.classList.remove("show");
+
+      screen.classList.add("active");
+
+
+      function say(message) {
+
+        text.classList.remove("show");
+
+        setTimeout(() => {
+
+          text.textContent = message;
+
+          void text.offsetWidth;
+
+          text.classList.add("show");
+
+        }, 50);
+
+      }
+
+
+      setTimeout(() => {
+        say("You stand still.");
+      }, 500);
+
+
+      setTimeout(() => {
+
+        screen.classList.add("closer");
+
+        say("They keep getting closer.");
+
+      }, 2500);
+
+
+      setTimeout(() => {
+        say("Closer.");
+      }, 4500);
+
+
+      setTimeout(() => {
+
+        screen.classList.remove("closer");
+
+        screen.classList.add("very-close");
+
+        say("Even closer.");
+
+      }, 6000);
+
+
+      /*
+        Only the Stand Still scene
+        goes black here.
+      */
+
+      setTimeout(() => {
+
+        screen.classList.remove(
+          "closer",
+          "very-close"
+        );
+
+        screen.classList.add("blackout");
+
+        say(
+          "You close your eyes and embrace for the impact."
+        );
+
+      }, 8000);
+
+
+      setTimeout(() => {
+        say("They walked past you.");
+      }, 10500);
+
+
+      setTimeout(() => {
+        say("THEY WERE ACTUALLY GOING TO RICARDO MILOS!");
+        alertMeme.currentTime = 0;
+        alertMeme.play().catch(() => {});
+
+        setTimeout(() => {
+          ricardoVideo.currentTime = 0;
+          ricardoVideo.classList.add("show");
+          ricardoVideo.play().catch(() => {});
+        }, 1000);
+      }, 12300);
+
+
+      setTimeout(() => {
+        ricardoMessage.classList.add("show");
+        ricardoFries.classList.add("show");
+        next.classList.add("show");
+      }, 19300);
+
+    }
+
+
+    function returnFromStand() {
+
+      const screen =
+        document.getElementById("stand-screen");
+
+      const catVideo =
+        document.getElementById("cat-video");
+
+      catVideo.pause();
+
+      catVideo.currentTime = 0;
+
+      catVideo.classList.remove("show");
+
+      document.getElementById("ricardo-video").pause();
+      document.getElementById("ricardo-video").currentTime = 0;
+      document.getElementById("ricardo-video").classList.remove("show");
+      document.getElementById("ricardo-message").classList.remove("show");
+      document.getElementById("ricardo-fries").classList.remove("show");
+      document.getElementById("stand-next").classList.remove("show");
+      document.getElementById("alert-meme").pause();
+      document.getElementById("alert-meme").currentTime = 0;
+
+      document
+        .getElementById("stand-text")
+        .classList
+        .remove("show");
+
+      document
+        .getElementById("final-stand-text")
+        .classList
+        .remove("show");
+
+      document
+        .getElementById("stand-replay")
+        .classList
+        .remove("show");
+
+      screen.classList.remove(
+        "active",
+        "closer",
+        "very-close",
+        "blackout"
+      );
+
+      document
+        .getElementById("main-site")
+        .classList
+        .add("active");
+
+      document
+        .querySelectorAll(".choice-list button")
+        .forEach(button => {
+          button.classList.remove("selected");
+        });
+
+      document
+        .getElementById("background-music")
+        .play()
+        .catch(() => {});
+
+      goToNextQuestion();
+
+    }
+
+
+    function goToNextQuestion() {
+
+      document.getElementById("background-music").pause();
+      document.getElementById("death-video").pause();
+      document.getElementById("trip-video").pause();
+      document.getElementById("running-sound").pause();
+      document.getElementById("boss-spawn").pause();
+      document.getElementById("boss-music").pause();
+      document.getElementById("eye-charge-sound").pause();
+      document.getElementById("cat-video").pause();
+      document.getElementById("ricardo-video").pause();
+      document.getElementById("alert-meme").pause();
+
+      document.getElementById("death-screen").classList.remove("active", "video-active");
+      document.getElementById("panic-screen").classList.remove("active");
+      document.getElementById("stand-screen").classList.remove("active", "closer", "very-close", "blackout");
+      document.getElementById("main-site").classList.remove("active");
+      document.getElementById("next-question-screen").classList.add("active");
+
+    }
+
+
+    function answerQuestionTwo(button, answer) {
+
+      document
+        .querySelectorAll("#next-question-screen button")
+        .forEach(choice => choice.classList.remove("selected"));
+
+      button.classList.add("selected");
+
+      document
+        .getElementById("question-two-feedback")
+        .textContent = `You chose: ${answer}`;
+
+      if (answer === "Yes ofc twin!") {
+        showTwinResult();
+        startGetOutSequence();
+      } else {
+        startNoAnswerScene();
+      }
+
+    }
+
+
+    function startNoAnswerScene() {
+      const screen = document.getElementById("no-answer-screen");
+      const text = document.getElementById("no-answer-text");
+      const slash = document.getElementById("no-slash-video");
+      const deathVideo = document.getElementById("no-you-died-video");
+      const next = document.getElementById("no-answer-next");
+
+      document.getElementById("next-question-screen").classList.remove("active");
+      screen.classList.add("active");
+      text.style.display = "block";
+      document.getElementById("no-slash-canvas").classList.remove("show");
+      deathVideo.classList.remove("show");
+      next.classList.remove("show");
+      stopChromaEffect("no-slash-video", "no-slash-canvas");
+      deathVideo.pause();
+      deathVideo.currentTime = 0;
+      deathVideo.onended = null;
+      primeForDelayedSound(slash);
+      primeForDelayedSound(deathVideo);
+
+      setTimeout(() => {
+        text.style.display = "none";
+        playChromaEffect("no-slash-video", "no-slash-canvas", {
+          onended: () => {
+          deathVideo.classList.add("show");
+          deathVideo.currentTime = 0;
+          deathVideo.onended = () => next.classList.add("show");
+          deathVideo.play().catch(() => {});
+          }
+        });
+      }, 3000);
+    }
+
+
+    function returnToQuestionTwo() {
+      const screen = document.getElementById("no-answer-screen");
+      const slash = document.getElementById("no-slash-video");
+      const deathVideo = document.getElementById("no-you-died-video");
+
+      stopChromaEffect("no-slash-video", "no-slash-canvas");
+      deathVideo.pause();
+      deathVideo.onended = null;
+      document.getElementById("no-slash-canvas").classList.remove("show");
+      deathVideo.classList.remove("show");
+      document.getElementById("no-answer-next").classList.remove("show");
+      screen.classList.remove("active");
+      document.getElementById("question-two-feedback").textContent = "";
+      document
+        .querySelectorAll("#next-question-screen button")
+        .forEach(choice => choice.classList.remove("selected"));
+      document.getElementById("next-question-screen").classList.add("active");
+    }
+
+
+    function startGetOutSequence() {
+      if (questionTwoSequenceRunning) return;
+
+      questionTwoSequenceRunning = true;
+      primeForDelayedSound(document.getElementById("get-out-sound"));
+      document
+        .querySelectorAll("#next-question-screen button")
+        .forEach(choice => { choice.disabled = true; });
+
+      /* Give the choice a moment to land before the bit starts. */
+      setTimeout(() => {
+        const getOutSound = document.getElementById("get-out-sound");
+        let movedToQuestionThree = false;
+
+        const finishGetOut = () => {
+          if (movedToQuestionThree) return;
+          movedToQuestionThree = true;
+          getOutSound.onended = null;
+          goToQuestionThree();
+        };
+
+        startGreenScreenExplosion();
+
+        getOutSound.onended = finishGetOut;
+
+        getOutSound.currentTime = 0;
+        getOutSound.play().catch(finishGetOut);
+
+        /* Leave this scene roughly one second before the sound reaches its end. */
+        const duration = Number.isFinite(getOutSound.duration)
+          ? getOutSound.duration
+          : 3;
+        setTimeout(finishGetOut, Math.max(0, (duration - 1) * 1000));
+      }, 5000);
+    }
+
+
+    function startGreenScreenExplosion() {
+      document.getElementById("explosion-overlay").classList.add("active");
+      playChromaEffect("explosion-video", "explosion-canvas", { loop: true, muted: true });
+
+      setTimeout(stopGreenScreenExplosion, 2000);
+    }
+
+
+    function stopGreenScreenExplosion() {
+      stopChromaEffect("explosion-video", "explosion-canvas");
+      document.getElementById("explosion-overlay").classList.remove("active");
+    }
+
+
+    const chromaAnimationFrames = new Map();
+
+    function playChromaEffect(videoId, canvasId, options = {}) {
+      const video = document.getElementById(videoId);
+      const canvas = document.getElementById(canvasId);
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      const { loop = false, onended = null } = options;
+      let drawing = false;
+
+      stopChromaEffect(videoId, canvasId);
+      canvas.classList.add("show");
+      video.muted = false;
+      video.volume = 1;
+      video.playsInline = true;
+      video.loop = loop;
+
+      const drawFrame = () => {
+        if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+          /* 480px keeps the effect smooth on Android without visible quality loss. */
+          const width = Math.min(video.videoWidth || 480, 480);
+          const height = Math.round(width * (video.videoHeight || 360) / (video.videoWidth || 640));
+
+          if (canvas.width !== width || canvas.height !== height) {
+            canvas.width = width;
+            canvas.height = height;
+          }
+
+          context.clearRect(0, 0, width, height);
+          context.drawImage(video, 0, 0, width, height);
+          const frame = context.getImageData(0, 0, width, height);
+          const pixels = frame.data;
+
+          for (let i = 0; i < pixels.length; i += 4) {
+            const red = pixels[i];
+            const green = pixels[i + 1];
+            const blue = pixels[i + 2];
+            const strongestOther = Math.max(red, blue);
+
+            /* Aggressive mobile-friendly chroma key: remove green and its edge spill. */
+            if (green > 28 && green > strongestOther * 1.02) {
+              pixels[i + 3] = 0;
+            }
+          }
+
+          context.putImageData(frame, 0, 0);
+        }
+
+        chromaAnimationFrames.set(
+          videoId,
+          requestAnimationFrame(drawFrame)
+        );
+      };
+
+      video.onended = () => {
+        stopChromaEffect(videoId, canvasId);
+        if (onended) onended();
+      };
+
+      const beginDrawing = () => {
+        if (drawing) return;
+        drawing = true;
+        drawFrame();
+      };
+
+      const restartAndPlay = () => {
+        try { video.currentTime = 0; } catch (_) {}
+        video.play().then(beginDrawing).catch(() => {
+          /* Retry once after metadata is available on slower Android devices. */
+          video.addEventListener("canplay", () => video.play().then(beginDrawing).catch(() => {}), { once: true });
+        });
+      };
+
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        restartAndPlay();
+      } else {
+        video.addEventListener("loadeddata", restartAndPlay, { once: true });
+        video.load();
+      }
+    }
+
+
+    function stopChromaEffect(videoId, canvasId) {
+      const frameId = chromaAnimationFrames.get(videoId);
+      if (frameId) cancelAnimationFrame(frameId);
+      chromaAnimationFrames.delete(videoId);
+
+      const video = document.getElementById(videoId);
+      const canvas = document.getElementById(canvasId);
+      video.pause();
+      video.loop = false;
+      video.onended = null;
+      canvas.classList.remove("show");
+    }
+
+
+    function goToQuestionThree() {
+      stopGreenScreenExplosion();
+      document.getElementById("get-out-sound").pause();
+      document.getElementById("get-out-sound").currentTime = 0;
+      document.getElementById("careless-music").pause();
+      document.getElementById("heart-effect").pause();
+      document.getElementById("next-question-screen").classList.remove("active");
+      document.getElementById("twin-screen").classList.remove("active");
+      document.getElementById("question-three-screen").classList.add("active");
+    }
+
+
+    function answerQuestionThree(button, answer) {
+      const feedback = document.getElementById("question-three-feedback");
+
+      document
+        .querySelectorAll("#question-three-screen button")
+        .forEach(choice => choice.classList.remove("selected"));
+
+      button.classList.add("selected");
+
+      if (answer !== "Tralalero Tralala") {
+        feedback.textContent = "Wrong answer twin. Try again.";
+        return;
+      }
+
+      feedback.textContent = "Correct. Tralalero Tralala!";
+
+      setTimeout(startTralaleroScene, 350);
+    }
+
+
+    function startTralaleroScene() {
+      if (questionThreeSequenceRunning) return;
+
+      questionThreeSequenceRunning = true;
+      const screen = document.getElementById("tralalero-screen");
+      const video = document.getElementById("tralalero-video");
+
+      document.getElementById("question-three-screen").classList.remove("active");
+      screen.classList.add("active");
+      video.currentTime = 0;
+      video.volume = 1;
+      video.play().catch(() => {});
+      primeForDelayedSound(document.getElementById("birthday-performance-video"));
+
+      setTimeout(() => playQuestionThreeEffect("car-crash-effect"), 8000);
+      setTimeout(() => playQuestionThreeEffect("missile-explosion-effect"), 10000);
+      setTimeout(() => playQuestionThreeEffect("q3-plane-effect"), 11000);
+    }
+
+
+    function playQuestionThreeEffect(effectId) {
+      if (effectId === "car-crash-effect") {
+        document.getElementById("tralalero-video").volume = 0.3;
+        playChromaEffect("car-crash-effect", "car-crash-canvas");
+        return;
+      }
+
+      if (effectId === "missile-explosion-effect") {
+        playChromaEffect("missile-explosion-effect", "missile-explosion-canvas");
+        return;
+      }
+
+      if (effectId === "q3-plane-effect") {
+        playChromaEffect("q3-plane-effect", "q3-plane-canvas", {
+          onended: showBirthdayFinalScene
+        });
+        return;
+      }
+
+      const effect = document.getElementById(effectId);
+
+      effect.classList.add("show");
+      effect.currentTime = 0;
+      effect.onended = () => {
+        effect.classList.remove("show");
+
+        if (effectId === "q3-plane-effect") {
+          showBirthdayFinalScene();
+        }
+      };
+      effect.play().catch(() => {});
+    }
+
+
+    function showBirthdayFinalScene() {
+      const finalScreen = document.getElementById("birthday-final-screen");
+      const note = document.getElementById("birthday-video-note");
+      const video = document.getElementById("birthday-performance-video");
+      const heart = document.getElementById("birthday-heart");
+
+      document.getElementById("tralalero-video").pause();
+      document.getElementById("tralalero-screen").classList.remove("active");
+      finalScreen.classList.add("active");
+
+      setTimeout(() => note.classList.add("show"), 5000);
+      setTimeout(() => {
+        video.classList.add("show");
+        heart.classList.add("show");
+        video.currentTime = 0;
+        video.play().catch(() => {});
+      }, 6000);
+    }
+
+
+    function showTwinResult() {
+
+      const music = document.getElementById("careless-music");
+      const heartEffect = document.getElementById("heart-effect");
+
+      document.getElementById("next-question-screen").classList.remove("active");
+      document.getElementById("twin-screen").classList.add("active");
+
+      music.pause();
+      music.currentTime = 0;
+      music.play().catch(() => {});
+      heartEffect.currentTime = 0;
+      heartEffect.play().catch(() => {});
+
+    }
+
+  </script>
+  <script src="mobile-effects.js"></script>
+
+</body>
+</html>
