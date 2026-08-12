@@ -409,7 +409,8 @@
       display: none;
       position: fixed;
       inset: 0;
-      z-index: 20;
+      z-index: 1000;
+      background: transparent !important;
       align-items: center;
       justify-content: center;
       pointer-events: none;
@@ -432,6 +433,7 @@
     /* The clown remains playing underneath the transparent plane crash. */
     #clown-video.keep-playing-behind-plane {
       z-index: 3;
+      visibility: hidden;
     }
 
     .plane-canvas {
@@ -1429,13 +1431,13 @@
       const overlay = document.getElementById("plane-overlay");
       const clown = document.getElementById("clown-video");
 
-      // Keep the clown video alive in the background. The plane canvas is
-      // intentionally placed above it, so the clown continues playing/audio
-      // continues while the crash is visible.
+      // The clown MUST continue playing. We only hide its pixels while the
+      // transparent airplane crash canvas is displayed above it.
       overlay.classList.add("active");
 
       if (clown) {
         clown.classList.add("keep-playing-behind-plane");
+
         if (clown.paused) {
           clown.play().catch(() => {});
         }
@@ -1445,7 +1447,13 @@
         sound: true,
         onended: () => {
           overlay.classList.remove("active");
-          if (clown) clown.classList.remove("keep-playing-behind-plane");
+
+          // Reveal the clown at its CURRENT playback position. It was never
+          // paused, so it will not look frozen when the crash disappears.
+          if (clown) {
+            clown.classList.remove("keep-playing-behind-plane");
+          }
+
           showWelcome();
         }
       });
