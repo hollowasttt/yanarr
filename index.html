@@ -169,6 +169,16 @@
 
     .brainrot-crash-effect.show { display: block; }
     #tralalero-screen > .brainrot-crash-effect { z-index: 20; }
+    #tralalero-screen > canvas.brainrot-crash-effect {
+      display: none;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      z-index: 20;
+    }
+    #tralalero-screen > canvas.brainrot-crash-effect.show { display: block; }
 
     #birthday-final-screen {
       display: none;
@@ -2267,23 +2277,36 @@
       video.currentTime = 0;
       video.volume = 1;
       video.play().catch(() => {});
-      primeForDelayedSound(document.getElementById("birthday-performance-video"));
+
+      // Preload all three crash sources before their timers fire. This is much
+      // more reliable on mobile Safari/Chrome than waiting for a first play.
+      ["car-crash-effect", "missile-explosion-effect", "q3-plane-effect"].forEach(id => {
+        const v = document.getElementById(id);
+        v.muted = true;
+        v.preload = "auto";
+        try { v.load(); } catch (_) {}
+      });
 
       setTimeout(() => playQuestionThreeEffect("car-crash-effect"), 8000);
       setTimeout(() => playQuestionThreeEffect("missile-explosion-effect"), 10000);
-      setTimeout(() => playQuestionThreeEffect("q3-plane-effect"), 11000);
+      setTimeout(() => playQuestionThreeEffect("q3-plane-effect"), 12000);
     }
 
-
     function playQuestionThreeEffect(effectId) {
+      const canvasId = effectId === "car-crash-effect"
+        ? "car-crash-canvas"
+        : effectId === "missile-explosion-effect"
+          ? "missile-explosion-canvas"
+          : "q3-plane-canvas";
+
       if (effectId === "car-crash-effect") {
         document.getElementById("tralalero-video").volume = 0.3;
-        playChromaEffect("car-crash-effect", "car-crash-canvas", { sound: true });
+        playChromaEffectReliable(effectId, canvasId, { sound: true });
         return;
       }
 
       if (effectId === "missile-explosion-effect") {
-        playChromaEffect("missile-explosion-effect", "missile-explosion-canvas", { sound: true });
+        playChromaEffectReliable(effectId, canvasId, { sound: true });
         return;
       }
 
@@ -2294,31 +2317,122 @@
           finished = true;
           showBirthdayFinalScene();
         };
-        playChromaEffect("q3-plane-effect", "q3-plane-canvas", {
+
+        playChromaEffectReliable(effectId, canvasId, {
           sound: true,
           onended: finish
         });
-        const plane = document.getElementById("q3-plane-effect");
-        const fallbackMs = Number.isFinite(plane.duration) && plane.duration > 0
-          ? (plane.duration + 0.3) * 1000 : 5000;
-        setTimeout(finish, fallbackMs);
-        return;
+
+        // The transparent WebM can fail to dispatch ended on some phones.
+        // Give it enough time to render, then force the final scene.
+        const plane = document.getElementById(effectId);
+        const fallback = () => {
+          const duration = Number.isFinite(plane.duration) && plane.duration > 0
+            ? plane.duration * 1000 + 800
+            : 6000;
+          setTimeout(finish, duration);
+        };
+        if (plane.readyState >= HTMLMediaElement.HAVE_METADATA) fallback();
+        else plane.addEventListener("loadedmetadata", fallback, { once: true });
       }
-
-      const effect = document.getElementById(effectId);
-
-      effect.classList.add("show");
-      effect.currentTime = 0;
-      effect.onended = () => {
-        effect.classList.remove("show");
-
-        if (effectId === "q3-plane-effect") {
-          showBirthdayFinalScene();
-        }
-      };
-      effect.play().catch(() => {});
     }
 
+    // Dedicated mobile-safe chroma player. It does not depend on a stale
+    // loadeddata handler and always creates a fresh animation loop.
+    function playChromaEffectReliable(videoId, canvasId, options = {}) {
+      const video = document.getElementById(videoId);
+      const canvas = document.getElementById(canvasId);
+      if (!video || !canvas) return;
+
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      const { onended = null, sound = false } = options;
+      const oldFrame = chromaAnimationFrames.get(videoId);
+      if (oldFrame) cancelAnimationFrame(oldFrame);
+      chromaAnimationFrames.delete(videoId);
+
+      canvas.classList.add("show");
+      video.pause();
+      video.loop = false;
+      video.muted = true;
+      video.playbackRate = 1;
+      video.currentTime = 0;
+
+      let stopped = false;
+      let started = false;
+
+      const cleanup = () => {
+        if (stopped) return;
+        stopped = true;
+        const frame = chromaAnimationFrames.get(videoId);
+        if (frame) cancelAnimationFrame(frame);
+        chromaAnimationFrames.delete(videoId);
+        video.removeEventListener("ended", ended);
+        canvas.classList.remove("show");
+      };
+
+      const ended = () => {
+        cleanup();
+        if (onended) onended();
+      };
+
+      const draw = () => {
+        if (stopped) return;
+        try {
+          if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth) {
+            const w = Math.min(video.videoWidth, 640);
+            const h = Math.max(1, Math.round(w * video.videoHeight / video.videoWidth));
+            if (canvas.width !== w || canvas.height !== h) {
+              canvas.width = w;
+              canvas.height = h;
+            }
+            context.clearRect(0, 0, w, h);
+            context.drawImage(video, 0, 0, w, h);
+            const frame = context.getImageData(0, 0, w, h);
+            const px = frame.data;
+            for (let i = 0; i < px.length; i += 4) {
+              const r = px[i], g = px[i + 1], b = px[i + 2];
+              const dominance = g - Math.max(r, b);
+              if (g > 45 && dominance > 12) {
+                px[i + 3] = 0;
+              } else if (g > 70 && dominance > 5) {
+                px[i + 1] = Math.max(r, b);
+              }
+            }
+            context.putImageData(frame, 0, 0);
+          }
+        } catch (_) {}
+        chromaAnimationFrames.set(videoId, requestAnimationFrame(draw));
+      };
+
+      const begin = () => {
+        if (started || stopped) return;
+        started = true;
+        video.currentTime = 0;
+        video.muted = true;
+        video.play().then(() => {
+          draw();
+          if (sound) requestAnimationFrame(() => { if (!stopped) video.muted = false; });
+        }).catch(() => {
+          // Retry once after the browser has had a chance to finish loading.
+          setTimeout(() => {
+            if (stopped) return;
+            video.muted = true;
+            video.play().then(() => {
+              draw();
+              if (sound) requestAnimationFrame(() => { if (!stopped) video.muted = false; });
+            }).catch(() => {});
+          }, 150);
+        });
+      };
+
+      video.addEventListener("ended", ended, { once: false });
+      video.addEventListener("canplay", begin, { once: true });
+      if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) begin();
+      else {
+        try { video.load(); } catch (_) {}
+        setTimeout(begin, 500);
+      }
+    }
 
     function showBirthdayFinalScene() {
       const finalScreen = document.getElementById("birthday-final-screen");
