@@ -411,45 +411,36 @@
       position: fixed;
       inset: 0;
       z-index: 1000;
-      background: transparent !important;
       align-items: center;
       justify-content: center;
       pointer-events: none;
-
-      /* Transparent so the previous screen stays visible */
-      background: transparent;
+      background: transparent !important;
     }
 
     #plane-overlay.active {
       display: flex;
     }
 
-    #plane-overlay video {
-      display: none;
+    #turkish-screen {
+      position: relative;
+      z-index: 2;
     }
 
-    #turkish-screen { position: relative; z-index: 2; }
-    #video-box, #clown-video { position: relative; z-index: 3; }
-
-    /* The clown remains playing underneath the transparent plane crash. */
-    #clown-video.keep-playing-behind-plane {
+    #video-box,
+    #clown-video {
+      position: relative;
       z-index: 3;
-      visibility: visible !important;
-      opacity: 1 !important;
     }
 
-    .plane-canvas {
-      display: none;
+    #plane-overlay video {
+      display: block;
       width: 100%;
       height: 100%;
       object-fit: contain;
-      pointer-events: none;
-    }
-
-    #plane-overlay.active .plane-canvas {
-      display: block;
+      background: transparent !important;
       position: relative;
-      z-index: 21;
+      z-index: 1001;
+      pointer-events: none;
     }
 
     /* =========================
@@ -1054,14 +1045,10 @@
   </div>
 
   <!-- TRANSPARENT PLANE CRASH -->
-  <div id="plane-overlay">
-    <video id="plane-video" class="chroma-source" muted playsinline preload="metadata">
-      <source
-        src="plane_crash_transparent.webm"
-        type="video/webm"
-      >
+  <div id="plane-overlay" aria-hidden="true">
+    <video id="plane-video" playsinline preload="auto">
+      <source src="plane_crash_transparent.webm" type="video/webm">
     </video>
-    <canvas id="plane-canvas" class="plane-canvas"></canvas>
   </div>
 
   <audio id="background-music" loop>
@@ -1377,7 +1364,8 @@
         .classList
         .add("active");
 
-      primeForDelayedSound(document.getElementById("plane-video"));
+      // Do not pre-play/pause the airplane video on mobile.
+      // Start it only when the crash overlay actually begins.
 
       setTimeout(() => {
         playPlaneCrash();
@@ -1433,22 +1421,28 @@
       const overlay = document.getElementById("plane-overlay");
       const plane = document.getElementById("plane-video");
 
-      // IMPORTANT: The plane is already a transparent WebM.
-      // Do not run it through canvas/chroma-key processing.
-      // Clown.mp4 is completely independent and is never paused or altered.
       overlay.classList.add("active");
 
+      // Never touch clown-video here. It keeps playing normally underneath.
       plane.pause();
       plane.currentTime = 0;
-      plane.muted = false;
+      plane.muted = true;
       plane.volume = 1;
-      plane.playbackRate = 1;
 
-      plane.play().catch(() => {
-        // Mobile autoplay can reject audio playback; retry muted only.
-        plane.muted = true;
-        plane.play().catch(() => {});
-      });
+      const startPlane = () => {
+        plane.play().catch(() => {
+          // Visual playback should still work even when mobile blocks audio.
+          plane.muted = true;
+          plane.play().catch(() => {});
+        });
+      };
+
+      if (plane.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        startPlane();
+      } else {
+        plane.addEventListener("canplay", startPlane, { once: true });
+        plane.load();
+      }
 
       plane.onended = () => {
         plane.onended = null;
@@ -1457,7 +1451,6 @@
         showWelcome();
       };
     }
-
 
     function showWelcome() {
 
