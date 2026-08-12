@@ -1431,19 +1431,31 @@
 
     function playPlaneCrash() {
       const overlay = document.getElementById("plane-overlay");
+      const plane = document.getElementById("plane-video");
 
-      // IMPORTANT: clown.mp4 is deliberately left completely untouched.
-      // No pause(), no play(), no currentTime changes, no hiding.
-      // The airplane crash is an independent transparent layer above it.
+      // IMPORTANT: The plane is already a transparent WebM.
+      // Do not run it through canvas/chroma-key processing.
+      // Clown.mp4 is completely independent and is never paused or altered.
       overlay.classList.add("active");
 
-      playChromaEffect("plane-video", "plane-canvas", {
-        sound: true,
-        onended: () => {
-          overlay.classList.remove("active");
-          showWelcome();
-        }
+      plane.pause();
+      plane.currentTime = 0;
+      plane.muted = false;
+      plane.volume = 1;
+      plane.playbackRate = 1;
+
+      plane.play().catch(() => {
+        // Mobile autoplay can reject audio playback; retry muted only.
+        plane.muted = true;
+        plane.play().catch(() => {});
       });
+
+      plane.onended = () => {
+        plane.onended = null;
+        plane.pause();
+        overlay.classList.remove("active");
+        showWelcome();
+      };
     }
 
 
