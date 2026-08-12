@@ -174,6 +174,7 @@
       top: -4% !important;
       object-fit: contain !important;
       background: transparent !important;
+      pointer-events: none;
     }
 
     .brainrot-crash-effect.show { display: block; }
@@ -433,7 +434,8 @@
     /* The clown remains playing underneath the transparent plane crash. */
     #clown-video.keep-playing-behind-plane {
       z-index: 3;
-      visibility: hidden;
+      visibility: visible !important;
+      opacity: 1 !important;
     }
 
     .plane-canvas {
@@ -1429,31 +1431,16 @@
 
     function playPlaneCrash() {
       const overlay = document.getElementById("plane-overlay");
-      const clown = document.getElementById("clown-video");
 
-      // The clown MUST continue playing. We only hide its pixels while the
-      // transparent airplane crash canvas is displayed above it.
+      // IMPORTANT: clown.mp4 is deliberately left completely untouched.
+      // No pause(), no play(), no currentTime changes, no hiding.
+      // The airplane crash is an independent transparent layer above it.
       overlay.classList.add("active");
-
-      if (clown) {
-        clown.classList.add("keep-playing-behind-plane");
-
-        if (clown.paused) {
-          clown.play().catch(() => {});
-        }
-      }
 
       playChromaEffect("plane-video", "plane-canvas", {
         sound: true,
         onended: () => {
           overlay.classList.remove("active");
-
-          // Reveal the clown at its CURRENT playback position. It was never
-          // paused, so it will not look frozen when the crash disappears.
-          if (clown) {
-            clown.classList.remove("keep-playing-behind-plane");
-          }
-
           showWelcome();
         }
       });
