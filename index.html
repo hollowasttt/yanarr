@@ -1,35 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-  >
-
-  <title>Question Game</title>
-
-  <link rel="stylesheet" href="mobile-fixes.css">
-
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    body {
-      background: #0a0a0a;
-      color: #fff;
-      font-family: Arial, Helvetica, sans-serif;
-      min-height: 100dvh;
-      overflow-x: hidden;
-      overscroll-behavior: none;
-    }
-
-    /* =========================
        NORMAL SCREENS
     ========================= */
 
@@ -145,6 +113,7 @@
       z-index: 900;
       overflow: hidden;
       background: #000;
+
     }
 
     #tralalero-screen.active { display: block; }
@@ -409,7 +378,7 @@
       display: none;
       position: fixed;
       inset: 0;
-      z-index: 1;
+      z-index: 20;
       align-items: center;
       justify-content: center;
       pointer-events: none;
@@ -429,6 +398,11 @@
     #turkish-screen { position: relative; z-index: 2; }
     #video-box, #clown-video { position: relative; z-index: 3; }
 
+    /* The clown remains playing underneath the transparent plane crash. */
+    #clown-video.keep-playing-behind-plane {
+      z-index: 3;
+    }
+
     .plane-canvas {
       display: none;
       width: 100%;
@@ -439,6 +413,8 @@
 
     #plane-overlay.active .plane-canvas {
       display: block;
+      position: relative;
+      z-index: 21;
     }
 
     /* =========================
@@ -1420,12 +1396,25 @@
 
     function playPlaneCrash() {
       const overlay = document.getElementById("plane-overlay");
+      const clown = document.getElementById("clown-video");
+
+      // Keep the clown video alive in the background. The plane canvas is
+      // intentionally placed above it, so the clown continues playing/audio
+      // continues while the crash is visible.
       overlay.classList.add("active");
+
+      if (clown) {
+        clown.classList.add("keep-playing-behind-plane");
+        if (clown.paused) {
+          clown.play().catch(() => {});
+        }
+      }
 
       playChromaEffect("plane-video", "plane-canvas", {
         sound: true,
         onended: () => {
           overlay.classList.remove("active");
+          if (clown) clown.classList.remove("keep-playing-behind-plane");
           showWelcome();
         }
       });
@@ -2485,5 +2474,36 @@
   </script>
   <script src="mobile-effects.js"></script>
 
-</body>
+</body><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+  >
+
+  <title>Question Game</title>
+
+  <link rel="stylesheet" href="mobile-fixes.css">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: #0a0a0a;
+      color: #fff;
+      font-family: Arial, Helvetica, sans-serif;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      overscroll-behavior: none;
+    }
+
+    /* =========================
 </html>
