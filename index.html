@@ -160,7 +160,7 @@
       display: none;
       position: absolute;
       inset: 0;
-      z-index: 2;
+      z-index: 10;
       width: 100%;
       height: 100%;
       object-fit: contain;
@@ -168,6 +168,7 @@
     }
 
     .brainrot-crash-effect.show { display: block; }
+    #tralalero-screen > .brainrot-crash-effect { z-index: 20; }
 
     #birthday-final-screen {
       display: none;
@@ -271,6 +272,17 @@
     #no-slash-canvas.show,
     #no-you-died-video.show,
     .death-canvas.show { display: block; }
+
+    #death-next {
+      display: none;
+      position: fixed;
+      z-index: 20;
+      bottom: 8vh;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(260px, 76vw);
+    }
+    #death-next.show { display: block; }
 
     #no-answer-next {
       display: none;
@@ -378,7 +390,7 @@
       display: none;
       position: fixed;
       inset: 0;
-      z-index: 100;
+      z-index: 1;
       align-items: center;
       justify-content: center;
       pointer-events: none;
@@ -394,6 +406,9 @@
     #plane-overlay video {
       display: none;
     }
+
+    #turkish-screen { position: relative; z-index: 2; }
+    #video-box, #clown-video { position: relative; z-index: 3; }
 
     .plane-canvas {
       display: none;
@@ -1216,6 +1231,8 @@
       onclick="respawn()"
     ></button>
 
+    <button id="death-next" class="replay-btn" onclick="goToNextQuestion()">Next</button>
+
   </section>
 
   <section id="panic-screen">
@@ -1459,6 +1476,7 @@
       deathVideo.currentTime = 0;
       deathVideo.classList.remove("show");
       document.getElementById("death-canvas").classList.remove("show");
+      document.getElementById("death-next").classList.remove("show");
       stopChromaEffect("death-video", "death-canvas");
       tripVideo.pause();
       tripVideo.currentTime = 0;
@@ -1490,9 +1508,9 @@
           loop: true,
           sound: true
         });
+        setTimeout(() => document.getElementById("death-next").classList.add("show"), 2000);
       }, 5000);
       setTimeout(() => lines[3].classList.add("show"), 11000);
-      setTimeout(goToNextQuestion, 14000);
     }
 
     function primeForDelayedSound(media) {
@@ -1519,6 +1537,7 @@
       runningSound.currentTime = 0;
 
       screen.classList.remove("active", "video-active");
+      document.getElementById("death-next").classList.remove("show");
       document.getElementById("death-video").classList.remove("show");
       document.getElementById("death-canvas").classList.remove("show");
       stopChromaEffect("death-video", "death-canvas");
@@ -1758,6 +1777,9 @@
 
       replay.classList.remove("show");
 
+      primeForDelayedSound(ricardoVideo);
+      primeForDelayedSound(alertMeme);
+
       screen.classList.add("active");
 
 
@@ -1837,12 +1859,22 @@
       setTimeout(() => {
         say("THEY WERE ACTUALLY GOING TO RICARDO MILOS!");
         alertMeme.currentTime = 0;
-        alertMeme.play().catch(() => {});
+        alertMeme.muted = false;
+        alertMeme.play().catch(() => {
+          alertMeme.muted = true;
+          alertMeme.play().catch(() => {});
+        });
 
         setTimeout(() => {
           ricardoVideo.currentTime = 0;
           ricardoVideo.classList.add("show");
-          ricardoVideo.play().catch(() => {});
+          ricardoVideo.muted = true;
+          ricardoVideo.play().then(() => {
+            requestAnimationFrame(() => { ricardoVideo.muted = false; });
+          }).catch(() => {
+            ricardoVideo.muted = true;
+            ricardoVideo.play().catch(() => {});
+          });
         }, 1000);
       }, 12300);
 
@@ -2092,6 +2124,7 @@
       video.loop = loop;
       video.muted = true;
       video.volume = 1;
+      video.playbackRate = (videoId === "heart-effect") ? 1.75 : 1;
 
       const drawFrame = () => {
         if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -2184,6 +2217,7 @@
       video.loop = false;
       video.onended = null;
       video.muted = true;
+      video.playbackRate = 1;
       canvas.classList.remove("show");
       try { canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height); } catch (_) {}
     }
@@ -2254,10 +2288,20 @@
       }
 
       if (effectId === "q3-plane-effect") {
+        let finished = false;
+        const finish = () => {
+          if (finished) return;
+          finished = true;
+          showBirthdayFinalScene();
+        };
         playChromaEffect("q3-plane-effect", "q3-plane-canvas", {
           sound: true,
-          onended: showBirthdayFinalScene
+          onended: finish
         });
+        const plane = document.getElementById("q3-plane-effect");
+        const fallbackMs = Number.isFinite(plane.duration) && plane.duration > 0
+          ? (plane.duration + 0.3) * 1000 : 5000;
+        setTimeout(finish, fallbackMs);
         return;
       }
 
