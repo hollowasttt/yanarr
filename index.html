@@ -281,6 +281,7 @@
 
     #no-slash-canvas,
     #no-you-died-video,
+    #no-you-died-image,
     .death-canvas {
       display: none;
       position: absolute;
@@ -293,7 +294,17 @@
 
     #no-slash-canvas.show,
     #no-you-died-video.show,
+    #no-you-died-image.show,
     .death-canvas.show { display: block; }
+
+    #no-you-died-image {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
 
     #death-next {
       display: none;
@@ -1142,9 +1153,15 @@
       <source src="undertale-slash-green.mp4" type="video/mp4">
     </video>
     <canvas id="no-slash-canvas"></canvas>
-    <video id="no-you-died-video" playsinline preload="auto">
-      <source src="no-you-died-mobile.mp4" type="video/mp4">
-    </video>
+    <img
+      id="no-you-died-image"
+      alt=""
+      aria-hidden="true"
+      src="no-you-died-mobile.webp"
+    >
+    <audio id="no-you-died-audio" preload="auto">
+      <source src="no-you-died-sound.mp3" type="audio/mpeg">
+    </audio>
     <button id="no-answer-next" onclick="returnToQuestionTwo()">Next</button>
   </section>
 
@@ -2052,7 +2069,8 @@
       const screen = document.getElementById("no-answer-screen");
       const text = document.getElementById("no-answer-text");
       const slash = document.getElementById("no-slash-video");
-      const deathVideo = document.getElementById("no-you-died-video");
+      const deathImage = document.getElementById("no-you-died-image");
+      const deathAudio = document.getElementById("no-you-died-audio");
       const next = document.getElementById("no-answer-next");
 
       document.getElementById("next-question-screen").classList.remove("active");
@@ -2060,77 +2078,48 @@
 
       text.style.display = "block";
       document.getElementById("no-slash-canvas").classList.remove("show");
-      deathVideo.classList.remove("show");
+      deathImage.classList.remove("show");
       next.classList.remove("show");
 
       stopChromaEffect("no-slash-video", "no-slash-canvas");
 
-      deathVideo.pause();
-      deathVideo.currentTime = 0;
-      deathVideo.onended = null;
-      deathVideo.muted = true;
+      deathAudio.pause();
+      deathAudio.currentTime = 0;
 
-      // Unlock the native MP4 while we still have the user's button gesture.
-      // We immediately pause it again; this does not leave two videos playing.
-      try {
-        deathVideo.load();
-        deathVideo.play().then(() => {
-          deathVideo.pause();
-          deathVideo.currentTime = 0;
-        }).catch(() => {});
-      } catch (_) {}
+      const startDeathScene = () => {
+        text.style.display = "none";
+        deathImage.classList.add("show");
+        deathImage.src = "no-you-died-mobile.webp";
 
-      const startDeathVideo = () => {
-        deathVideo.classList.add("show");
-        deathVideo.currentTime = 0;
-        deathVideo.muted = true;
+        // The WebP animation starts on its own as soon as it is displayed.
+        // Start the sound separately.
+        deathAudio.currentTime = 0;
+        deathAudio.play().catch(() => {});
 
-        const finishPlay = () => {
-          deathVideo.onended = () => next.classList.add("show");
-          // Try to restore audio only after playback has actually started.
-          requestAnimationFrame(() => {
-            try { deathVideo.muted = false; } catch (_) {}
-          });
-        };
-
-        deathVideo.play().then(finishPlay).catch(() => {
-          // One muted retry is the safest mobile fallback.
-          deathVideo.muted = true;
-          setTimeout(() => {
-            deathVideo.play().then(finishPlay).catch(() => {
-              // If playback is still blocked, show Next rather than trapping the user.
-              next.classList.add("show");
-            });
-          }, 120);
-        });
+        // This scene is 9.775s in the source; keep a safety fallback for mobile.
+        setTimeout(() => next.classList.add("show"), 9800);
       };
 
       const startSlash = () => {
         text.style.display = "none";
 
-        let deathStarted = false;
-        const launchDeath = () => {
-          if (deathStarted) return;
-          deathStarted = true;
-          startDeathVideo();
+        let launched = false;
+        const launch = () => {
+          if (launched) return;
+          launched = true;
+          startDeathScene();
         };
 
         playChromaEffect("no-slash-video", "no-slash-canvas", {
           sound: true,
-          onended: launchDeath
+          onended: launch
         });
-
-        const fallbackToDeath = (delayMs) => {
-          setTimeout(() => {
-            if (!deathStarted) launchDeath();
-          }, delayMs);
-        };
 
         const slashDuration = Number.isFinite(slash.duration) && slash.duration > 0
           ? slash.duration * 1000 + 500
           : 4500;
 
-        fallbackToDeath(slashDuration);
+        setTimeout(launch, slashDuration);
       };
 
       setTimeout(startSlash, 3000);
@@ -2139,13 +2128,14 @@
     function returnToQuestionTwo() {
       const screen = document.getElementById("no-answer-screen");
       const slash = document.getElementById("no-slash-video");
-      const deathVideo = document.getElementById("no-you-died-video");
+      const deathImage = document.getElementById("no-you-died-image");
+      const deathAudio = document.getElementById("no-you-died-audio");
 
       stopChromaEffect("no-slash-video", "no-slash-canvas");
-      deathVideo.pause();
-      deathVideo.onended = null;
+      deathAudio.pause();
+      deathAudio.currentTime = 0;
       document.getElementById("no-slash-canvas").classList.remove("show");
-      deathVideo.classList.remove("show");
+      deathImage.classList.remove("show");
       document.getElementById("no-answer-next").classList.remove("show");
       screen.classList.remove("active");
       document.getElementById("question-two-feedback").textContent = "";
