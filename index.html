@@ -405,51 +405,29 @@
        IMPORTANT:
        NO BLACK BACKGROUND
     ========================= */
-
     #plane-overlay {
       display: none;
       position: fixed;
       inset: 0;
       z-index: 1000;
-      background: transparent !important;
       align-items: center;
       justify-content: center;
       pointer-events: none;
-
-      /* Transparent so the previous screen stays visible */
-      background: transparent;
+      background: transparent !important;
     }
 
-    #plane-overlay.active {
-      display: flex;
-    }
+    #plane-overlay.active { display: flex; }
 
-    #plane-overlay video {
-      display: none;
-    }
-
-    #turkish-screen { position: relative; z-index: 2; }
-    #video-box, #clown-video { position: relative; z-index: 3; }
-
-    /* The clown remains playing underneath the transparent plane crash. */
-    #clown-video.keep-playing-behind-plane {
-      z-index: 3;
-      visibility: visible !important;
-      opacity: 1 !important;
-    }
-
-    .plane-canvas {
-      display: none;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      pointer-events: none;
-    }
-
-    #plane-overlay.active .plane-canvas {
+    #plane-overlay img {
       display: block;
+      width: min(108vw, 900px);
+      max-width: 108vw;
+      height: auto;
+      max-height: 108vh;
+      object-fit: contain;
       position: relative;
-      z-index: 21;
+      z-index: 1001;
+      pointer-events: none;
     }
 
     /* =========================
@@ -1053,16 +1031,13 @@
     <p id="this-is-u">This is u btw.</p>
   </div>
 
-  <!-- GREEN-SCREEN PLANE CRASH -->
-  <div id="plane-overlay">
-    <video id="plane-video" class="chroma-source" muted playsinline preload="metadata">
-      <source
-        src="plane-crash-green.mp4"
-        type="video/mp4"
-      >
-    </video>
-    <canvas id="plane-canvas" class="plane-canvas"></canvas>
+  <!-- MOBILE-SAFE PLANE CRASH: animated transparent WebP + separate audio -->
+  <div id="plane-overlay" aria-hidden="true">
+    <img id="plane-animation" src="plane_crash_keyed_loop.webp" alt="">
   </div>
+  <audio id="plane-crash-sound" preload="auto">
+    <source src="plane-crash-sound.mp3" type="audio/mpeg">
+  </audio>
 
   <audio id="background-music" loop>
     <source src="overworld-day.mp3" type="audio/mpeg">
@@ -1365,7 +1340,21 @@
     let questionTwoSequenceRunning = false;
     let questionThreeSequenceRunning = false;
 
+    function preparePlaneAudio() {
+      const audio = document.getElementById("plane-crash-sound");
+      if (!audio) return;
+      audio.preload = "auto";
+      audio.muted = true;
+      audio.volume = 1;
+      audio.currentTime = 0;
+      audio.play().then(() => {
+        // Keep the media unlocked on mobile; it stays silent until the crash.
+      }).catch(() => {});
+    }
+
     function chooseEnglish() {
+
+      preparePlaneAudio();
 
       document
         .getElementById("language-screen")
@@ -1386,6 +1375,8 @@
 
 
     function chooseTurkish() {
+
+      preparePlaneAudio();
 
       document
         .getElementById("language-screen")
@@ -1429,21 +1420,39 @@
 
     function playPlaneCrash() {
       const overlay = document.getElementById("plane-overlay");
+      const animation = document.getElementById("plane-animation");
+      const audio = document.getElementById("plane-crash-sound");
 
-      // IMPORTANT: clown.mp4 is deliberately left completely untouched.
-      // No pause(), no play(), no currentTime changes, no hiding.
-      // The airplane crash is an independent transparent layer above it.
+      // The clown video is completely independent. No canvas/video decoding
+      // is started for the plane, so the clown keeps playing on mobile.
       overlay.classList.add("active");
 
-      playChromaEffect("plane-video", "plane-canvas", {
-        sound: true,
-        onended: () => {
-          overlay.classList.remove("active");
-          showWelcome();
-        }
+      // Restart the animated image from its first frame by replacing the src.
+      const src = animation.getAttribute("src");
+      animation.removeAttribute("src");
+      requestAnimationFrame(() => {
+        animation.setAttribute("src", src);
       });
-    }
 
+      if (audio) {
+        audio.currentTime = 0;
+        audio.muted = false;
+        audio.play().catch(() => {
+          // If mobile refuses the sound here, the visual animation still plays.
+        });
+      }
+
+      // The keyed animation is 4.64s. Hide it just after the animation ends.
+      setTimeout(() => {
+        overlay.classList.remove("active");
+        if (audio) {
+          audio.pause();
+          audio.currentTime = 0;
+          audio.muted = true;
+        }
+        showWelcome();
+      }, 4800);
+    }
 
     function showWelcome() {
 
@@ -1461,6 +1470,13 @@
         .getElementById("plane-overlay")
         .classList
         .remove("active");
+
+      const planeAudio = document.getElementById("plane-crash-sound");
+      if (planeAudio) {
+        planeAudio.pause();
+        planeAudio.currentTime = 0;
+        planeAudio.muted = true;
+      }
 
       document
         .getElementById("welcome-screen")
