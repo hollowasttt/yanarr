@@ -225,6 +225,55 @@
       text-shadow: 0 0 22px rgba(255, 129, 198, 0.42);
     }
 
+
+    #touch-me-twin {
+      display: none;
+      min-height: 54px;
+      width: min(320px, 82vw);
+      font-size: clamp(1.05rem, 4.5vw, 1.3rem);
+      font-weight: 800;
+      border: 2px solid rgba(255, 202, 232, 0.82);
+      background: linear-gradient(100deg, #8b4e90, #4d326e);
+      color: #fff;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+
+    #touch-me-twin.show {
+      display: block;
+      animation: reveal 0.55s ease both;
+    }
+
+    #touch-me-final {
+      display: none;
+      width: min(96vw, 900px);
+      max-height: 62dvh;
+      object-fit: contain;
+      border-radius: 18px;
+      border: 2px solid rgba(255, 202, 232, 0.82);
+      background: #000;
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.5);
+    }
+
+    #touch-me-final.show {
+      display: block;
+      animation: reveal 0.55s ease both;
+    }
+
+    #touch-me-skulls {
+      display: none;
+      font-size: clamp(2.1rem, 10vw, 4.2rem);
+      line-height: 1;
+      letter-spacing: 0.08em;
+      margin-bottom: -2px;
+      text-shadow: 0 0 18px rgba(255, 255, 255, 0.32);
+    }
+
+    #touch-me-skulls.show {
+      display: block;
+      animation: reveal 0.55s ease both;
+    }
+
     #birthday-video-note,
     #birthday-performance-video,
     #birthday-heart { display: none; }
@@ -1211,6 +1260,11 @@
     <div class="birthday-final-card">
       <p class="birthday-message">Hocam sa doğum günün tekrardan kutlu olsun. Baya kısa oldu ama bu siteyi yapmak düşündüğümden daha fazla zaman aldı la. Herneyse hocam seviliyorsun daha fazla boş zamanım olsa daha iyi yapıp daha fazla şey eklerdim. Tekrardan doğum günün kutlu olsun my pookie bear &lt;3</p>
       <p id="birthday-video-note">Hocam bunu da ben çalıyorum btw</p>
+      <button id="touch-me-twin" onclick="showTouchMeTwin()">Touch me twin...</button>
+      <div id="touch-me-skulls" aria-hidden="true">💀 💀 💀</div>
+      <video id="touch-me-final" playsinline controls preload="metadata">
+        <source src="tModLoader_replay_2026.03.12-01.00.mp4" type="video/mp4">
+      </video>
       <video id="birthday-performance-video" playsinline controls>
         <source src="birthday-performance.mp4" type="video/mp4">
       </video>
@@ -2516,10 +2570,19 @@
       const note = document.getElementById("birthday-video-note");
       const video = document.getElementById("birthday-performance-video");
       const heart = document.getElementById("birthday-heart");
+      const touchButton = document.getElementById("touch-me-twin");
+      const touchVideo = document.getElementById("touch-me-final");
+      const skulls = document.getElementById("touch-me-skulls");
 
       document.getElementById("tralalero-video").pause();
       document.getElementById("tralalero-screen").classList.remove("active");
       finalScreen.classList.add("active");
+
+      touchButton.classList.remove("show");
+      touchVideo.classList.remove("show");
+      skulls.classList.remove("show");
+      touchVideo.pause();
+      touchVideo.currentTime = 0;
 
       setTimeout(() => note.classList.add("show"), 5000);
       setTimeout(() => {
@@ -2528,6 +2591,21 @@
         video.currentTime = 0;
         video.play().catch(() => {});
       }, 6000);
+
+      // Put the button below the existing birthday performance reveal.
+      setTimeout(() => touchButton.classList.add("show"), 6500);
+    }
+
+    function showTouchMeTwin() {
+      const touchButton = document.getElementById("touch-me-twin");
+      const touchVideo = document.getElementById("touch-me-final");
+      const skulls = document.getElementById("touch-me-skulls");
+
+      touchButton.classList.remove("show");
+      skulls.classList.add("show");
+      touchVideo.classList.add("show");
+      touchVideo.currentTime = 0;
+      touchVideo.play().catch(() => {});
     }
 
 
