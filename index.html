@@ -168,10 +168,10 @@
     }
 
     #q3-plane-canvas {
-      width: 108% !important;
-      height: 108% !important;
-      left: -4% !important;
-      top: -4% !important;
+      width: 200% !important;
+      height: 200% !important;
+      left: -50% !important;
+      top: -50% !important;
       object-fit: contain !important;
       background: transparent !important;
       pointer-events: none;
@@ -2068,9 +2068,15 @@
       deathVideo.onended = null;
       deathVideo.muted = true;
 
-      // Do not pre-play the native MP4 while the slash video is being decoded.
-      // On mobile Safari this can cause the second decoder to stall.
-      try { deathVideo.load(); } catch (_) {}
+      // Unlock the native MP4 while we still have the user's button gesture.
+      // We immediately pause it again; this does not leave two videos playing.
+      try {
+        deathVideo.load();
+        deathVideo.play().then(() => {
+          deathVideo.pause();
+          deathVideo.currentTime = 0;
+        }).catch(() => {});
+      } catch (_) {}
 
       const startDeathVideo = () => {
         deathVideo.classList.add("show");
@@ -2099,10 +2105,30 @@
 
       const startSlash = () => {
         text.style.display = "none";
+
+        let deathStarted = false;
+        const launchDeath = () => {
+          if (deathStarted) return;
+          deathStarted = true;
+          startDeathVideo();
+        };
+
         playChromaEffect("no-slash-video", "no-slash-canvas", {
           sound: true,
-          onended: startDeathVideo
+          onended: launchDeath
         });
+
+        const fallbackToDeath = (delayMs) => {
+          setTimeout(() => {
+            if (!deathStarted) launchDeath();
+          }, delayMs);
+        };
+
+        const slashDuration = Number.isFinite(slash.duration) && slash.duration > 0
+          ? slash.duration * 1000 + 500
+          : 4500;
+
+        fallbackToDeath(slashDuration);
       };
 
       setTimeout(startSlash, 3000);
