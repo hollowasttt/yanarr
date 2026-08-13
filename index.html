@@ -274,6 +274,51 @@
       animation: reveal 0.55s ease both;
     }
 
+
+    #touch-me-screen {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1200;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 22px;
+      padding: 24px 18px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(255, 103, 181, 0.28), transparent 40%),
+        linear-gradient(160deg, #211028, #09050c 78%);
+      text-align: center;
+    }
+
+    #touch-me-screen.active {
+      display: flex;
+    }
+
+    #touch-me-screen-skulls {
+      font-size: clamp(2.5rem, 12vw, 5rem);
+      line-height: 1;
+      letter-spacing: 0.08em;
+      text-shadow: 0 0 18px rgba(255, 255, 255, 0.28);
+    }
+
+    #touch-me-screen-video {
+      display: block;
+      width: min(96vw, 1000px);
+      max-height: 76dvh;
+      object-fit: contain;
+      border-radius: 18px;
+      border: 2px solid rgba(255, 202, 232, 0.82);
+      background: #000;
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.52);
+    }
+
+
+    #touch-me-final {
+      display: none !important;
+    }
+
     #birthday-video-note,
     #birthday-performance-video,
     #birthday-heart { display: none; }
@@ -1270,6 +1315,14 @@
       </video>
       <div id="birthday-heart" aria-label="heart">♥</div>
     </div>
+  </section>
+
+
+  <section id="touch-me-screen">
+    <div id="touch-me-screen-skulls" aria-hidden="true">💀 💀 💀</div>
+    <video id="touch-me-screen-video" playsinline controls preload="auto">
+      <source src="tModLoader_replay_2026.03.12-01.00(1).mp4" type="video/mp4">
+    </video>
   </section>
 
   <section id="death-screen">
@@ -2571,43 +2624,42 @@
       const video = document.getElementById("birthday-performance-video");
       const heart = document.getElementById("birthday-heart");
       const touchButton = document.getElementById("touch-me-twin");
-      const touchVideo = document.getElementById("touch-me-final");
-      const skulls = document.getElementById("touch-me-skulls");
 
       document.getElementById("tralalero-video").pause();
       document.getElementById("tralalero-screen").classList.remove("active");
       finalScreen.classList.add("active");
 
       touchButton.classList.remove("show");
-      touchVideo.classList.remove("show");
-      skulls.classList.remove("show");
-      touchVideo.pause();
-      touchVideo.currentTime = 0;
 
       setTimeout(() => note.classList.add("show"), 5000);
+
       setTimeout(() => {
         video.classList.add("show");
         heart.classList.add("show");
         video.currentTime = 0;
         video.play().catch(() => {});
-      }, 6000);
 
-      // Put the button below the existing birthday performance reveal.
-      setTimeout(() => touchButton.classList.add("show"), 6500);
+        // The Touch Me Twin button appears exactly 10 seconds after
+        // the Happy Birthday performance video starts.
+        setTimeout(() => {
+          touchButton.classList.add("show");
+        }, 10000);
+      }, 6000);
     }
 
     function showTouchMeTwin() {
+      const birthdayScreen = document.getElementById("birthday-final-screen");
+      const touchScreen = document.getElementById("touch-me-screen");
+      const touchVideo = document.getElementById("touch-me-screen-video");
       const touchButton = document.getElementById("touch-me-twin");
-      const touchVideo = document.getElementById("touch-me-final");
-      const skulls = document.getElementById("touch-me-skulls");
 
       touchButton.classList.remove("show");
-      skulls.classList.add("show");
-      touchVideo.classList.add("show");
+      birthdayScreen.classList.remove("active");
+      touchScreen.classList.add("active");
+
       touchVideo.currentTime = 0;
       touchVideo.play().catch(() => {});
     }
-
 
     function showTwinResult() {
 
