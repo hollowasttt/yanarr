@@ -168,13 +168,15 @@
     }
 
     #q3-plane-canvas {
-      width: 200% !important;
-      height: 200% !important;
-      left: -50% !important;
-      top: -50% !important;
+      width: 100% !important;
+      height: 100% !important;
+      left: 0 !important;
+      top: 0 !important;
       object-fit: contain !important;
       background: transparent !important;
       pointer-events: none;
+      transform: scale(2);
+      transform-origin: center center;
     }
 
     .brainrot-crash-effect.show { display: block; }
@@ -1141,7 +1143,7 @@
     </video>
     <canvas id="no-slash-canvas"></canvas>
     <video id="no-you-died-video" playsinline preload="auto">
-      <source src="no-you-died.mp4" type="video/mp4">
+      <source src="no-you-died-mobile.mp4" type="video/mp4">
     </video>
     <button id="no-answer-next" onclick="returnToQuestionTwo()">Next</button>
   </section>
