@@ -1140,7 +1140,7 @@
       <source src="undertale-slash-green.mp4" type="video/mp4">
     </video>
     <canvas id="no-slash-canvas"></canvas>
-    <video id="no-you-died-video" playsinline>
+    <video id="no-you-died-video" playsinline preload="auto">
       <source src="no-you-died.mp4" type="video/mp4">
     </video>
     <button id="no-answer-next" onclick="returnToQuestionTwo()">Next</button>
@@ -1183,7 +1183,7 @@
     </video>
     <canvas id="missile-explosion-canvas" class="brainrot-crash-effect"></canvas>
     <video id="q3-plane-effect" class="chroma-source" muted playsinline preload="metadata">
-      <source src="plane-crash-green.mp4" type="video/webm">
+      <source src="plane-crash-green.mp4" type="video/mp4">
     </video>
     <canvas id="q3-plane-canvas" class="brainrot-crash-effect"></canvas>
   </section>
@@ -2055,37 +2055,58 @@
 
       document.getElementById("next-question-screen").classList.remove("active");
       screen.classList.add("active");
+
       text.style.display = "block";
       document.getElementById("no-slash-canvas").classList.remove("show");
       deathVideo.classList.remove("show");
       next.classList.remove("show");
+
       stopChromaEffect("no-slash-video", "no-slash-canvas");
+
       deathVideo.pause();
       deathVideo.currentTime = 0;
       deathVideo.onended = null;
-      primeForDelayedSound(slash);
-      primeForDelayedSound(deathVideo);
+      deathVideo.muted = true;
 
-      setTimeout(() => {
+      // Do not pre-play the native MP4 while the slash video is being decoded.
+      // On mobile Safari this can cause the second decoder to stall.
+      try { deathVideo.load(); } catch (_) {}
+
+      const startDeathVideo = () => {
+        deathVideo.classList.add("show");
+        deathVideo.currentTime = 0;
+        deathVideo.muted = true;
+
+        const finishPlay = () => {
+          deathVideo.onended = () => next.classList.add("show");
+          // Try to restore audio only after playback has actually started.
+          requestAnimationFrame(() => {
+            try { deathVideo.muted = false; } catch (_) {}
+          });
+        };
+
+        deathVideo.play().then(finishPlay).catch(() => {
+          // One muted retry is the safest mobile fallback.
+          deathVideo.muted = true;
+          setTimeout(() => {
+            deathVideo.play().then(finishPlay).catch(() => {
+              // If playback is still blocked, show Next rather than trapping the user.
+              next.classList.add("show");
+            });
+          }, 120);
+        });
+      };
+
+      const startSlash = () => {
         text.style.display = "none";
         playChromaEffect("no-slash-video", "no-slash-canvas", {
           sound: true,
-          onended: () => {
-            deathVideo.classList.add("show");
-            deathVideo.currentTime = 0;
-            deathVideo.muted = true;
-            deathVideo.play().then(() => {
-              deathVideo.muted = false;
-            }).catch(() => {
-              deathVideo.muted = true;
-              deathVideo.play().catch(() => {});
-            });
-            deathVideo.onended = () => next.classList.add("show");
-          }
+          onended: startDeathVideo
         });
-      }, 3000);
-    }
+      };
 
+      setTimeout(startSlash, 3000);
+    }
 
     function returnToQuestionTwo() {
       const screen = document.getElementById("no-answer-screen");
